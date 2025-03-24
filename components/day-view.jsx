@@ -1,24 +1,22 @@
 "use client"
 
 import { useState } from "react"
-import { User } from "lucide-react"
+import { User } from 'lucide-react'
 
 export default function DayView({ currentDate, events, onTimeClick, onEventClick, onDragEventTime }) {
   const [draggedEvent, setDraggedEvent] = useState(null)
   const [dragOverHour, setDragOverHour] = useState(null)
 
-  // Generate hours for the day (from 0 to 23)
+  // Generuj godziny dla dnia (od 0 do 23)
   const hours = Array.from({ length: 24 }, (_, i) => i)
 
-  // Format hour for display (e.g., "9 AM", "2 PM")
+  // Formatuj godzinę do wyświetlenia (np. "9:00", "14:00")
   const formatHour = (hour) => {
-    if (hour === 0) return "12 AM"
-    if (hour === 12) return "12 PM"
-    return hour < 12 ? `${hour} AM` : `${hour - 12} PM`
-    // Nie tłumaczymy AM/PM, ponieważ w polskim formacie czasu zwykle używa się 24-godzinnego formatu
+    return `${hour}:00`
+    // W polskim formacie używamy 24-godzinnego zapisu
   }
 
-  // Get events for the current day
+  // Pobierz wydarzenia dla bieżącego dnia
   const getDayEvents = () => {
     return events.filter((event) => {
       const eventDate = new Date(event.date)
@@ -30,28 +28,28 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     })
   }
 
-  // Get the hour from a time string (e.g., "09:00" -> 9)
+  // Pobierz godzinę z ciągu czasu (np. "09:00" -> 9)
   const getHourFromTimeString = (timeString) => {
     if (!timeString) return 0
     const [hours] = timeString.split(":")
     return Number.parseInt(hours, 10)
   }
 
-  // Get the minutes from a time string (e.g., "09:30" -> 30)
+  // Pobierz minuty z ciągu czasu (np. "09:30" -> 30)
   const getMinutesFromTimeString = (timeString) => {
     if (!timeString) return 0
     const [, minutes] = timeString.split(":")
     return Number.parseInt(minutes || "0", 10)
   }
 
-  // Convert time string to minutes since midnight
+  // Konwertuj ciąg czasu na minuty od północy
   const timeToMinutes = (timeString) => {
     const hours = getHourFromTimeString(timeString)
     const minutes = getMinutesFromTimeString(timeString)
     return hours * 60 + minutes
   }
 
-  // Check if two events overlap
+  // Sprawdź, czy dwa wydarzenia nakładają się
   const eventsOverlap = (event1, event2) => {
     const start1 = timeToMinutes(event1.startTime)
     const end1 = timeToMinutes(event1.endTime)
@@ -61,11 +59,11 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     return start1 < end2 && start2 < end1
   }
 
-  // Group overlapping events
+  // Grupuj nakładające się wydarzenia
   const groupOverlappingEvents = (events) => {
     if (!events.length) return []
 
-    // Sort events by start time
+    // Sortuj wydarzenia według czasu rozpoczęcia
     const sortedEvents = [...events].sort((a, b) => timeToMinutes(a.startTime) - timeToMinutes(b.startTime))
 
     const groups = []
@@ -74,7 +72,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     for (let i = 1; i < sortedEvents.length; i++) {
       const event = sortedEvents[i]
 
-      // Check if this event overlaps with any event in the current group
+      // Sprawdź, czy to wydarzenie nakłada się z jakimkolwiek wydarzeniem w bieżącej grupie
       const overlapsWithGroup = currentGroup.some((groupEvent) => eventsOverlap(event, groupEvent))
 
       if (overlapsWithGroup) {
@@ -92,18 +90,18 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     return groups
   }
 
-  // Get events for a specific hour
+  // Pobierz wydarzenia dla określonej godziny
   const getEventsForHour = (hour) => {
     return getDayEvents().filter((event) => {
       const startHour = getHourFromTimeString(event.startTime)
       const endHour = getHourFromTimeString(event.endTime)
 
-      // Event starts in this hour or spans this hour
+      // Wydarzenie rozpoczyna się w tej godzinie lub obejmuje tę godzinę
       return startHour === hour || (startHour < hour && endHour > hour)
     })
   }
 
-  // Calculate event position and height based on start and end times
+  // Oblicz pozycję wydarzenia i wysokość na podstawie czasów rozpoczęcia i zakończenia
   const calculateEventStyle = (event, index = 0, total = 1) => {
     const startHour = getHourFromTimeString(event.startTime)
     const startMinute = getMinutesFromTimeString(event.startTime)
@@ -111,16 +109,16 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     const endHour = getHourFromTimeString(event.endTime)
     const endMinute = getMinutesFromTimeString(event.endTime)
 
-    // Calculate top position (percentage within the hour)
+    // Oblicz pozycję górną (procent w ramach godziny)
     const topPercentage = (startMinute / 60) * 100
 
-    // Calculate duration in minutes
+    // Oblicz czas trwania w minutach
     const durationMinutes = (endHour - startHour) * 60 + (endMinute - startMinute)
 
-    // Calculate height based on duration (percentage of an hour)
+    // Oblicz wysokość na podstawie czasu trwania (procent godziny)
     const heightPercentage = (durationMinutes / 60) * 100
 
-    // Calculate width and left position for overlapping events
+    // Oblicz szerokość i pozycję lewą dla nakładających się wydarzeń
     const width = total > 1 ? `${100 / total}%` : "100%"
     const left = total > 1 ? `${(index / total) * 100}%` : "0"
 
@@ -133,7 +131,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     }
   }
 
-  // Drag and drop handlers
+  // Obsługa przeciągnij i upuść
   const handleDragStart = (e, event) => {
     e.stopPropagation()
     setDraggedEvent(event)
@@ -147,7 +145,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
   const handleDrop = (e, hour) => {
     e.preventDefault()
     if (draggedEvent) {
-      // Calculate new start and end times
+      // Oblicz nowe czasy rozpoczęcia i zakończenia
       const startHour = getHourFromTimeString(draggedEvent.startTime)
       const endHour = getHourFromTimeString(draggedEvent.endTime)
       const duration = endHour - startHour
@@ -155,7 +153,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
       const newStartHour = hour
       const newEndHour = hour + duration
 
-      // Format times as strings (e.g., "09:00")
+      // Formatuj czasy jako ciągi (np. "09:00")
       const formatTimeString = (h) => {
         return `${h.toString().padStart(2, "0")}:00`
       }
@@ -172,18 +170,18 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     setDragOverHour(null)
   }
 
-  // Get current hour for highlighting
+  // Pobierz bieżącą godzinę do podświetlenia
   const currentHour = new Date().getHours()
   const isCurrentDay =
     new Date().getDate() === currentDate.getDate() &&
     new Date().getMonth() === currentDate.getMonth() &&
     new Date().getFullYear() === currentDate.getFullYear()
 
-  // Process all day events to find overlapping groups
+  // Przetwórz wszystkie wydarzenia dnia, aby znaleźć nakładające się grupy
   const dayEvents = getDayEvents()
   const eventGroups = groupOverlappingEvents(dayEvents)
 
-  // Create a map of events to their position in their group
+  // Utwórz mapę wydarzeń do ich pozycji w grupie
   const eventPositions = new Map()
 
   eventGroups.forEach((group) => {
@@ -198,7 +196,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
   return (
     <div className="h-full overflow-y-auto">
       <div className="grid grid-cols-[100px_1fr] min-h-full">
-        {/* Time labels */}
+        {/* Etykiety czasu */}
         <div className="border-r">
           {hours.map((hour) => (
             <div key={hour} className="h-20 border-b flex items-center justify-end pr-2 text-sm text-gray-500">
@@ -207,7 +205,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
           ))}
         </div>
 
-        {/* Hour slots */}
+        {/* Sloty godzinowe */}
         <div className="relative">
           {hours.map((hour) => {
             const isNowHour = isCurrentDay && hour === currentHour
@@ -226,7 +224,7 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
                 onDragOver={(e) => handleDragOver(e, hour)}
                 onDrop={(e) => handleDrop(e, hour)}
               >
-                {/* Current time indicator */}
+                {/* Wskaźnik bieżącego czasu */}
                 {isNowHour && (
                   <div
                     className="absolute left-0 right-0 border-t-2 border-red-500"
@@ -236,11 +234,11 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
                   ></div>
                 )}
 
-                {/* Events */}
+                {/* Wydarzenia */}
                 {getEventsForHour(hour).map((event) => {
                   const startHour = getHourFromTimeString(event.startTime)
 
-                  // Only render the event at its start hour to avoid duplicates
+                  // Renderuj wydarzenie tylko w godzinie rozpoczęcia, aby uniknąć duplikatów
                   if (startHour !== hour) return null
 
                   const position = eventPositions.get(event.id) || { index: 0, total: 1 }
@@ -285,4 +283,3 @@ export default function DayView({ currentDate, events, onTimeClick, onEventClick
     </div>
   )
 }
-

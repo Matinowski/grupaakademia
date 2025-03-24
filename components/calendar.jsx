@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { User, ChevronDown } from "lucide-react"
+import { User, ChevronDown } from 'lucide-react'
 
 // Importujemy funkcje tłumaczące
 import { translate, translateDayShort } from "@/lib/translations"
@@ -11,12 +11,12 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
   const [dragOverDate, setDragOverDate] = useState(null)
   const [expandedDays, setExpandedDays] = useState({})
 
-  // Get the days in the current month
+  // Pobierz liczbę dni w bieżącym miesiącu
   const getDaysInMonth = (year, month) => {
     return new Date(year, month + 1, 0).getDate()
   }
 
-  // Get the first day of the month (0 = Sunday, 1 = Monday, etc.)
+  // Pobierz pierwszy dzień miesiąca (0 = Niedziela, 1 = Poniedziałek, itd.)
   const getFirstDayOfMonth = (year, month) => {
     return new Date(year, month, 1).getDay()
   }
@@ -26,22 +26,22 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
   const daysInMonth = getDaysInMonth(year, month)
   const firstDayOfMonth = getFirstDayOfMonth(year, month)
 
-  // Create array of day numbers for the current month
+  // Utwórz tablicę numerów dni dla bieżącego miesiąca
   const days = Array.from({ length: daysInMonth }, (_, i) => i + 1)
 
-  // Add empty cells for days before the first day of the month
+  // Dodaj puste komórki dla dni przed pierwszym dniem miesiąca
   const emptyCells = Array.from({ length: firstDayOfMonth }, (_, i) => null)
 
-  // Combine empty cells and days
+  // Połącz puste komórki i dni
   const allCells = [...emptyCells, ...days]
 
-  // Create weeks (rows of 7 days)
+  // Utwórz tygodnie (rzędy po 7 dni)
   const weeks = []
   for (let i = 0; i < allCells.length; i += 7) {
     weeks.push(allCells.slice(i, i + 7))
   }
 
-  // Check if a date has events
+  // Sprawdź, czy data ma wydarzenia
   const getEventsForDate = (day) => {
     if (!day) return []
 
@@ -52,10 +52,10 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
     })
   }
 
-  // Day names
-  const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => translateDayShort(day))
+  // Nazwy dni
+  const dayNames = ["Nie", "Pon", "Wto", "Śro", "Czw", "Pią", "Sob"].map((day) => translateDayShort(day))
 
-  // Drag and drop handlers
+  // Obsługa przeciągnij i upuść
   const handleDragStart = (e, event) => {
     e.stopPropagation()
     setDraggedEvent(event)
@@ -83,7 +83,7 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
     setDragOverDate(null)
   }
 
-  // Toggle expanded day view for days with many events
+  // Przełącz rozszerzony widok dnia dla dni z wieloma wydarzeniami
   const toggleExpandDay = (day, e) => {
     e.stopPropagation()
     setExpandedDays((prev) => ({
@@ -95,14 +95,14 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
   return (
     <div className="h-full p-4">
       <div className="grid grid-cols-7 gap-px bg-gray-200">
-        {/* Day headers */}
+        {/* Nagłówki dni */}
         {dayNames.map((day, index) => (
           <div key={index} className="p-2 text-center text-sm font-medium text-gray-500 bg-white">
             {day}
           </div>
         ))}
 
-        {/* Calendar cells */}
+        {/* Komórki kalendarza */}
         {weeks.map((week, weekIndex) =>
           week.map((day, dayIndex) => {
             const dateEvents = getEventsForDate(day)
@@ -165,8 +165,8 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
                             className={`w-3 h-3 mr-1 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                           />
                           {isExpanded
-                            ? translate("common.Show less")
-                            : `+${dateEvents.length - 3} ${translate("common.more")}`}
+                            ? translate("common.Pokaż mniej")
+                            : `+${dateEvents.length - 3} ${translate("common.więcej")}`}
                         </div>
                       )}
                     </div>
@@ -180,4 +180,3 @@ export default function Calendar({ currentDate, events, onDateClick, onEventClic
     </div>
   )
 }
-

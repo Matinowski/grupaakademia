@@ -16,7 +16,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
     paymentMethod: "cash",
   })
 
-  // Calculate summary statistics
+  // Oblicz statystyki podsumowujące
   const calculateSummary = () => {
     const filteredTransactions = transactions.filter((transaction) => {
       if (filter !== "all" && transaction.type !== filter) return false
@@ -53,7 +53,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
 
   const summary = calculateSummary()
 
-  // Get transactions for display
+  // Pobierz transakcje do wyświetlenia
   const getFilteredTransactions = () => {
     return transactions
       .filter((transaction) => {
@@ -107,14 +107,14 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
 
   const getCategoryLabel = (category) => {
     const categories = {
-      lesson: "Driving Lesson",
-      exam: "Driving Exam",
-      theory: "Theory Class",
-      vehicle: "Vehicle Expense",
-      salary: "Salary",
-      rent: "Rent",
-      utilities: "Utilities",
-      other: "Other",
+      lesson: "Lekcja jazdy",
+      exam: "Egzamin na prawo jazdy",
+      theory: "Zajęcia teoretyczne",
+      vehicle: "Wydatki na pojazd",
+      salary: "Wynagrodzenie",
+      rent: "Czynsz",
+      utilities: "Media",
+      other: "Inne",
     }
     return categories[category] || category
   }
@@ -122,12 +122,12 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
   return (
     <div className="h-full flex flex-col p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Financial Management</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Zarządzanie Finansami</h1>
         <div className="flex space-x-2">
           <div className="relative">
             <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 flex items-center">
               <Filter className="w-4 h-4 mr-1" />
-              <span>Export</span>
+              <span>Eksportuj</span>
               <Download className="w-4 h-4 ml-1" />
             </button>
           </div>
@@ -137,16 +137,16 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
             onClick={() => setShowAddForm(true)}
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add Transaction
+            Dodaj Transakcję
           </button>
         </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Karty podsumowujące */}
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">Income</h3>
+            <h3 className="text-sm font-medium text-gray-500">Przychody</h3>
             <ArrowUp className="w-4 h-4 text-green-500" />
           </div>
           <div className="text-2xl font-bold text-gray-800">${summary.income.toFixed(2)}</div>
@@ -154,7 +154,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
 
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">Expenses</h3>
+            <h3 className="text-sm font-medium text-gray-500">Wydatki</h3>
             <ArrowDown className="w-4 h-4 text-red-500" />
           </div>
           <div className="text-2xl font-bold text-gray-800">${summary.expenses.toFixed(2)}</div>
@@ -162,7 +162,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
 
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">Balance</h3>
+            <h3 className="text-sm font-medium text-gray-500">Bilans</h3>
             <DollarSign className="w-4 h-4 text-blue-500" />
           </div>
           <div className={`text-2xl font-bold ${summary.balance >= 0 ? "text-green-600" : "text-red-600"}`}>
@@ -172,14 +172,14 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
 
         <div className="bg-white p-4 rounded-lg shadow">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-500">Transactions</h3>
+            <h3 className="text-sm font-medium text-gray-500">Transakcje</h3>
             <CreditCard className="w-4 h-4 text-gray-500" />
           </div>
           <div className="text-2xl font-bold text-gray-800">{summary.count}</div>
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filtry */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex space-x-2">
           <select
@@ -187,10 +187,10 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
           >
-            <option value="month">This Month</option>
-            <option value="quarter">This Quarter</option>
-            <option value="year">This Year</option>
-            <option value="all">All Time</option>
+            <option value="month">Ten Miesiąc</option>
+            <option value="quarter">Ten Kwartał</option>
+            <option value="year">Ten Rok</option>
+            <option value="all">Cały Okres</option>
           </select>
 
           <select
@@ -198,21 +198,21 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
           >
-            <option value="all">All Transactions</option>
-            <option value="income">Income Only</option>
-            <option value="expense">Expenses Only</option>
+            <option value="all">Wszystkie Transakcje</option>
+            <option value="income">Tylko Przychody</option>
+            <option value="expense">Tylko Wydatki</option>
           </select>
         </div>
       </div>
 
-      {/* Add Transaction Form */}
+      {/* Formularz dodawania transakcji */}
       {showAddForm && (
         <div className="bg-white p-4 rounded-lg shadow mb-6">
-          <h3 className="text-lg font-medium mb-4">Add New Transaction</h3>
+          <h3 className="text-lg font-medium mb-4">Dodaj Nową Transakcję</h3>
           <form onSubmit={handleAddTransaction}>
             <div className="grid grid-cols-3 gap-4 mb-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
                 <input
                   type="date"
                   name="date"
@@ -224,7 +224,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Typ</label>
                 <select
                   name="type"
                   value={newTransaction.type}
@@ -232,13 +232,13 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="income">Income</option>
-                  <option value="expense">Expense</option>
+                  <option value="income">Przychód</option>
+                  <option value="expense">Wydatek</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kwota</label>
                 <input
                   type="number"
                   name="amount"
@@ -253,7 +253,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kategoria</label>
                 <select
                   name="category"
                   value={newTransaction.category}
@@ -263,25 +263,25 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                 >
                   {newTransaction.type === "income" ? (
                     <>
-                      <option value="lesson">Driving Lesson</option>
-                      <option value="exam">Driving Exam</option>
-                      <option value="theory">Theory Class</option>
-                      <option value="other">Other Income</option>
+                      <option value="lesson">Lekcja jazdy</option>
+                      <option value="exam">Egzamin na prawo jazdy</option>
+                      <option value="theory">Zajęcia teoretyczne</option>
+                      <option value="other">Inny przychód</option>
                     </>
                   ) : (
                     <>
-                      <option value="vehicle">Vehicle Expense</option>
-                      <option value="salary">Salary</option>
-                      <option value="rent">Rent</option>
-                      <option value="utilities">Utilities</option>
-                      <option value="other">Other Expense</option>
+                      <option value="vehicle">Wydatki na pojazd</option>
+                      <option value="salary">Wynagrodzenie</option>
+                      <option value="rent">Czynsz</option>
+                      <option value="utilities">Media</option>
+                      <option value="other">Inny wydatek</option>
                     </>
                   )}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Metoda płatności</label>
                 <select
                   name="paymentMethod"
                   value={newTransaction.paymentMethod}
@@ -289,22 +289,22 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
                 >
-                  <option value="cash">Cash</option>
-                  <option value="card">Credit/Debit Card</option>
-                  <option value="transfer">Bank Transfer</option>
-                  <option value="other">Other</option>
+                  <option value="cash">Gotówka</option>
+                  <option value="card">Karta kredytowa/debetowa</option>
+                  <option value="transfer">Przelew bankowy</option>
+                  <option value="other">Inna</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Opis</label>
                 <input
                   type="text"
                   name="description"
                   value={newTransaction.description}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder="Transaction description"
+                  placeholder="Opis transakcji"
                 />
               </div>
             </div>
@@ -315,20 +315,20 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                 onClick={() => setShowAddForm(false)}
               >
-                Cancel
+                Anuluj
               </button>
               <button
                 type="submit"
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
               >
-                Save Transaction
+                Zapisz Transakcję
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Transactions Table */}
+      {/* Tabela transakcji */}
       <div className="bg-white rounded-lg shadow flex-1 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
@@ -338,31 +338,31 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Date
+                  Data
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Description
+                  Opis
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Category
+                  Kategoria
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Payment Method
+                  Metoda płatności
                 </th>
                 <th
                   scope="col"
                   className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
                 >
-                  Amount
+                  Kwota
                 </th>
               </tr>
             </thead>
@@ -377,7 +377,13 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                     {getCategoryLabel(transaction.category)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                    {transaction.paymentMethod}
+                    {transaction.paymentMethod === "cash"
+                      ? "Gotówka"
+                      : transaction.paymentMethod === "card"
+                        ? "Karta"
+                        : transaction.paymentMethod === "transfer"
+                          ? "Przelew"
+                          : "Inna"}
                   </td>
                   <td
                     className={`px-6 py-4 whitespace-nowrap text-sm font-medium text-right ${
@@ -392,7 +398,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
               {getFilteredTransactions().length === 0 && (
                 <tr>
                   <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
-                    No transactions found for the selected period.
+                    Nie znaleziono transakcji dla wybranego okresu.
                   </td>
                 </tr>
               )}

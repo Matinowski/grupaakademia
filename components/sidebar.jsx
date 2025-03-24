@@ -19,13 +19,13 @@ import { translate } from "@/lib/translations"
 
 // Zmieniamy etykiety w menu nawigacyjnym
 const navigationItems = [
-  { id: "dashboard", name: translate("navigation.Dashboard"), icon: Home },
-  { id: "calendar", name: translate("navigation.Calendar"), icon: Calendar },
-  { id: "drivers", name: translate("navigation.Driver Profiles"), icon: Users },
-  { id: "instructors", name: translate("navigation.Instructor Profiles"), icon: BookOpen },
-  { id: "vehicles", name: translate("navigation.Vehicles"), icon: Car },
-  { id: "finances", name: translate("navigation.Finances"), icon: CreditCard },
-  { id: "settings", name: translate("navigation.Settings"), icon: Settings },
+  { id: "dashboard", name: translate("navigation.Pulpit"), icon: Home },
+  { id: "calendar", name: translate("navigation.Kalendarz"), icon: Calendar },
+  { id: "drivers", name: translate("navigation.Profile Kursantów"), icon: Users },
+  { id: "instructors", name: translate("navigation.Profile Instruktorów"), icon: BookOpen },
+  { id: "vehicles", name: translate("navigation.Pojazdy"), icon: Car },
+  { id: "finances", name: translate("navigation.Finanse"), icon: CreditCard },
+  { id: "settings", name: translate("navigation.Ustawienia"), icon: Settings },
 ]
 
 export default function Sidebar({
@@ -84,11 +84,11 @@ export default function Sidebar({
     <div className="w-64 h-full border-r bg-white overflow-y-auto">
       <div className="flex items-center justify-center p-4 border-b">
         <Calendar className="w-6 h-6 mr-2 text-blue-600" />
-        <h1 className="text-xl font-bold text-gray-800">DrivingSchool</h1>
+        <h1 className="text-xl font-bold text-gray-800">SzkołaJazdy</h1>
       </div>
 
       <div className="p-4">
-        {/* Navigation Section */}
+        {/* Sekcja nawigacji */}
         <div className="mb-4">
           <button
             className="flex items-center justify-between w-full text-left mb-2"
@@ -123,7 +123,7 @@ export default function Sidebar({
           )}
         </div>
 
-        {/* Only show calendars section when in calendar view */}
+        {/* Pokaż sekcję kalendarzy tylko w widoku kalendarza */}
         {activeSection === "calendar" && (
           <>
             <div className="mb-4">
@@ -132,7 +132,7 @@ export default function Sidebar({
                 onClick={() => toggleSection("myCalendars")}
               >
                 {/* Zmieniamy teksty sekcji kalendarza */}
-                <span className="font-medium text-gray-700">{translate("calendar.My calendars")}</span>
+                <span className="font-medium text-gray-700">{translate("calendar.Moje kalendarze")}</span>
                 {expanded.myCalendars ? (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 ) : (
@@ -158,7 +158,7 @@ export default function Sidebar({
                           const newColor = getRandomColor()
                           onCalendarColorChange(calendar.id, newColor)
                         }}
-                        title="Click to change color"
+                        title="Kliknij, aby zmienić kolor"
                       ></div>
                       <label htmlFor={`cal-${calendar.id}`} className="text-sm text-gray-700">
                         {calendar.name}
@@ -173,7 +173,7 @@ export default function Sidebar({
                         type="text"
                         value={newCalendarName}
                         onChange={(e) => setNewCalendarName(e.target.value)}
-                        placeholder={translate("calendar.Calendar name")}
+                        placeholder={translate("calendar.Nazwa kalendarza")}
                         className="text-sm border rounded px-2 py-1 w-full"
                         autoFocus
                         onKeyDown={(e) => {
@@ -193,7 +193,7 @@ export default function Sidebar({
                     >
                       <Plus className="w-4 h-4 mr-1" />
                       {/* Zmieniamy tekst przycisku dodawania kalendarza */}
-                      {translate("calendar.Add calendar")}
+                      {translate("calendar.Dodaj kalendarz")}
                     </button>
                   )}
                 </div>
@@ -206,7 +206,7 @@ export default function Sidebar({
                 onClick={() => toggleSection("otherCalendars")}
               >
                 {/* Zmieniamy teksty sekcji kalendarza */}
-                <span className="font-medium text-gray-700">{translate("calendar.Other calendars")}</span>
+                <span className="font-medium text-gray-700">{translate("calendar.Inne kalendarze")}</span>
                 {expanded.otherCalendars ? (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 ) : (
@@ -232,7 +232,7 @@ export default function Sidebar({
                           const newColor = getRandomColor()
                           onCalendarColorChange(calendar.id, newColor)
                         }}
-                        title="Click to change color"
+                        title="Kliknij, aby zmienić kolor"
                       ></div>
                       <label htmlFor={`cal-${calendar.id}`} className="text-sm text-gray-700">
                         {calendar.name}
@@ -246,7 +246,7 @@ export default function Sidebar({
                         type="text"
                         value={newCalendarName}
                         onChange={(e) => setNewCalendarName(e.target.value)}
-                        placeholder="Calendar name"
+                        placeholder="Nazwa kalendarza"
                         className="text-sm border rounded px-2 py-1 w-full"
                         autoFocus
                         onKeyDown={(e) => {
@@ -265,7 +265,7 @@ export default function Sidebar({
                       onClick={() => handleAddCalendar("other")}
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      Add calendar
+                      Dodaj kalendarz
                     </button>
                   )}
                 </div>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, User, Phone, Calendar, Clock, Plus } from "lucide-react"
+import { Search, User, Phone, Calendar, Clock, Plus } from 'lucide-react'
 // Importujemy funkcję translate
 import { translate } from "@/lib/translations"
 
@@ -21,7 +21,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
     notes: "",
   })
 
-  // Filter drivers based on search query
+  // Filtruj kierowców na podstawie zapytania wyszukiwania
   const filteredDrivers = drivers.filter(
     (driver) =>
       driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,7 +63,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
   return (
     <div className="h-full flex">
-      {/* Driver list */}
+      {/* Lista kierowców */}
       <div className="w-1/3 border-r overflow-y-auto">
         <div className="p-4 border-b sticky top-0 bg-white z-10">
           <div className="relative">
@@ -71,7 +71,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
             {/* Zmieniamy tekst pola wyszukiwania */}
             <input
               type="text"
-              placeholder={translate("driverProfiles.Search drivers...")}
+              placeholder={translate("driverProfiles.Szukaj kierowców...")}
               className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -83,7 +83,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
             onClick={() => setShowAddDriverForm(true)}
           >
             <Plus className="w-4 h-4 mr-1" />
-            {translate("driverProfiles.Add New Driver")}
+            {translate("driverProfiles.Dodaj Nowego Kierowcę")}
           </button>
         </div>
 
@@ -105,8 +105,8 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
                   }`}
                 >
                   {driver.remainingHours === 0
-                    ? translate("driverProfiles.Completed")
-                    : `${driver.remainingHours} ${translate("driverProfiles.hours")} ${translate("driverProfiles.remaining")}`}
+                    ? translate("driverProfiles.Ukończono")
+                    : `${driver.remainingHours} ${translate("driverProfiles.godzin")} ${translate("driverProfiles.pozostało")}`}
                 </span>
               </div>
             </div>
@@ -114,13 +114,13 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
           {filteredDrivers.length === 0 && (
             <div className="p-8 text-center text-gray-500">
-              {translate("driverProfiles.No drivers found matching")} "{searchQuery}"
+              {translate("driverProfiles.Nie znaleziono kierowców pasujących do")} "{searchQuery}"
             </div>
           )}
         </div>
       </div>
 
-      {/* Driver details */}
+      {/* Szczegóły kierowcy */}
       <div className="w-2/3 overflow-y-auto">
         {selectedDriver ? (
           <div className="p-6">
@@ -128,7 +128,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">{selectedDriver.name}</h2>
                 <p className="text-gray-500">
-                  {translate("driverProfiles.License Type")}: {selectedDriver.licenseType}
+                  {translate("driverProfiles.Typ Prawa Jazdy")}: {selectedDriver.licenseType}
                 </p>
               </div>
               <div
@@ -137,8 +137,8 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
                 }`}
               >
                 {selectedDriver.remainingHours === 0
-                  ? translate("driverProfiles.Training Completed")
-                  : translate("driverProfiles.In Training")}
+                  ? translate("driverProfiles.Szkolenie Ukończone")
+                  : translate("driverProfiles.W Trakcie Szkolenia")}
               </div>
             </div>
 
@@ -146,7 +146,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
               <div className="flex items-center">
                 <Phone className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">{translate("driverProfiles.Phone")}</div>
+                  <div className="text-sm text-gray-500">{translate("driverProfiles.Telefon")}</div>
                   <div>{selectedDriver.phone}</div>
                 </div>
               </div>
@@ -162,7 +162,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">{translate("driverProfiles.Start Date")}</div>
+                  <div className="text-sm text-gray-500">{translate("driverProfiles.Data Rozpoczęcia")}</div>
                   <div>{selectedDriver.startDate}</div>
                 </div>
               </div>
@@ -170,7 +170,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
               <div className="flex items-center">
                 <User className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">{translate("driverProfiles.Instructor")}</div>
+                  <div className="text-sm text-gray-500">{translate("driverProfiles.Instruktor")}</div>
                   <div>{selectedDriver.instructor}</div>
                 </div>
               </div>
@@ -178,7 +178,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">{translate("driverProfiles.Completed Hours")}</div>
+                  <div className="text-sm text-gray-500">{translate("driverProfiles.Ukończone Godziny")}</div>
                   <div>{selectedDriver.completedHours}</div>
                 </div>
               </div>
@@ -186,14 +186,14 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">{translate("driverProfiles.Remaining Hours")}</div>
+                  <div className="text-sm text-gray-500">{translate("driverProfiles.Pozostałe Godziny")}</div>
                   <div>{selectedDriver.remainingHours}</div>
                 </div>
               </div>
             </div>
 
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">{translate("driverProfiles.Progress")}</h3>
+              <h3 className="text-lg font-medium mb-2">{translate("driverProfiles.Postęp")}</h3>
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
                   className="bg-blue-600 h-2.5 rounded-full"
@@ -207,19 +207,19 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
                   (selectedDriver.completedHours / (selectedDriver.completedHours + selectedDriver.remainingHours)) *
                     100,
                 )}
-                % {translate("driverProfiles.complete")}
+                % {translate("driverProfiles.ukończone")}
               </div>
             </div>
 
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">{translate("driverProfiles.Notes")}</h3>
+              <h3 className="text-lg font-medium mb-2">{translate("driverProfiles.Notatki")}</h3>
               <div className="p-4 bg-gray-50 rounded-md">
-                {selectedDriver.notes || translate("driverProfiles.No notes available.")}
+                {selectedDriver.notes || translate("driverProfiles.Brak dostępnych notatek.")}
               </div>
             </div>
 
             <div>
-              <h3 className="text-lg font-medium mb-2">{translate("driverProfiles.Upcoming Lessons")}</h3>
+              <h3 className="text-lg font-medium mb-2">{translate("driverProfiles.Nadchodzące Lekcje")}</h3>
               {selectedDriver.upcomingLessons && selectedDriver.upcomingLessons.length > 0 ? (
                 <div className="space-y-2">
                   {selectedDriver.upcomingLessons.map((lesson, index) => (
@@ -227,28 +227,28 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
                       <Calendar className="w-5 h-5 mr-3 text-blue-500" />
                       <div>
                         <div className="font-medium">
-                          {lesson.date} at {lesson.time}
+                          {lesson.date} o {lesson.time}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {lesson.duration} hours with {lesson.instructor}
+                          {lesson.duration} godzin z {lesson.instructor}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-gray-500">{translate("driverProfiles.No upcoming lessons scheduled.")}</div>
+                <div className="text-gray-500">{translate("driverProfiles.Brak zaplanowanych nadchodzących lekcji.")}</div>
               )}
             </div>
           </div>
         ) : showAddDriverForm ? (
           <div className="p-6">
-            <h2 className="text-xl font-bold mb-4">{translate("driverProfiles.Add New Driver")}</h2>
+            <h2 className="text-xl font-bold mb-4">{translate("driverProfiles.Dodaj Nowego Kierowcę")}</h2>
             <form onSubmit={handleAddDriverSubmit}>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.Full Name")}
+                    {translate("driverProfiles.Pełne Imię i Nazwisko")}
                   </label>
                   <input
                     type="text"
@@ -262,7 +262,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.Phone")}
+                    {translate("driverProfiles.Telefon")}
                   </label>
                   <input
                     type="text"
@@ -290,7 +290,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.License Type")}
+                    {translate("driverProfiles.Typ Prawa Jazdy")}
                   </label>
                   <select
                     name="licenseType"
@@ -298,17 +298,17 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="A">A - Motorcycle</option>
-                    <option value="B">B - Car</option>
-                    <option value="C">C - Truck</option>
-                    <option value="D">D - Bus</option>
-                    <option value="E">E - Trailer</option>
+                    <option value="A">A - Motocykl</option>
+                    <option value="B">B - Samochód osobowy</option>
+                    <option value="C">C - Samochód ciężarowy</option>
+                    <option value="D">D - Autobus</option>
+                    <option value="E">E - Przyczepa</option>
                   </select>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.Start Date")}
+                    {translate("driverProfiles.Data Rozpoczęcia")}
                   </label>
                   <input
                     type="date"
@@ -322,7 +322,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.Instructor")}
+                    {translate("driverProfiles.Instruktor")}
                   </label>
                   <input
                     type="text"
@@ -335,7 +335,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.Completed Hours")}
+                    {translate("driverProfiles.Ukończone Godziny")}
                   </label>
                   <input
                     type="number"
@@ -349,7 +349,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {translate("driverProfiles.Remaining Hours")}
+                    {translate("driverProfiles.Pozostałe Godziny")}
                   </label>
                   <input
                     type="number"
@@ -364,7 +364,7 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
 
               <div className="mb-4">
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {translate("driverProfiles.Notes")}
+                  {translate("driverProfiles.Notatki")}
                 </label>
                 <textarea
                   name="notes"
@@ -381,24 +381,23 @@ export default function DriverProfiles({ drivers, onSelectDriver, onAddDriver })
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   onClick={() => setShowAddDriverForm(false)}
                 >
-                  {translate("driverProfiles.Cancel")}
+                  {translate("driverProfiles.Anuluj")}
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
                 >
-                  {translate("driverProfiles.Add Driver")}
+                  {translate("driverProfiles.Dodaj Kierowcę")}
                 </button>
               </div>
             </form>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
-            {translate("driverProfiles.Select a driver to view details or add a new driver.")}
+            {translate("driverProfiles.Wybierz kierowcę, aby zobaczyć szczegóły lub dodaj nowego kierowcę.")}
           </div>
         )}
       </div>
     </div>
   )
 }
-

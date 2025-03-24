@@ -3,9 +3,6 @@
 import { useState } from "react"
 import { Search, User, Phone, Calendar, Plus, Mail, BookOpen } from "lucide-react"
 
-// Podobne zmiany jak w driver-profiles.jsx, ale z odpowiednimi tłumaczeniami dla instruktorów
-// ...
-
 export default function InstructorProfiles({ instructors, drivers, onSelectInstructor, onAddInstructor }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedInstructor, setSelectedInstructor] = useState(null)
@@ -21,7 +18,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
     status: "active",
   })
 
-  // Filter instructors based on search query
+  // Filtruj instruktorów na podstawie zapytania wyszukiwania
   const filteredInstructors = instructors.filter(
     (instructor) =>
       instructor.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -75,21 +72,21 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
     }
   }
 
-  // Get assigned drivers for an instructor
+  // Pobierz przypisanych kursantów dla instruktora
   const getAssignedDrivers = (instructorId) => {
     return drivers.filter((driver) => driver.instructorId === instructorId)
   }
 
   return (
     <div className="h-full flex">
-      {/* Instructor list */}
+      {/* Lista instruktorów */}
       <div className="w-1/3 border-r overflow-y-auto">
         <div className="p-4 border-b sticky top-0 bg-white z-10">
           <div className="relative">
             <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              placeholder="Search instructors..."
+              placeholder="Szukaj instruktorów..."
               className="w-full pl-10 pr-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -100,7 +97,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
             onClick={() => setShowAddInstructorForm(true)}
           >
             <Plus className="w-4 h-4 mr-1" />
-            Add New Instructor
+            Dodaj Nowego Instruktora
           </button>
         </div>
 
@@ -123,35 +120,37 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                       instructor.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                     }`}
                   >
-                    {instructor.status === "active" ? "Active" : "Inactive"}
+                    {instructor.status === "active" ? "Aktywny" : "Nieaktywny"}
                   </span>
-                  <span className="text-xs text-gray-500 ml-2">{assignedDrivers.length} students</span>
+                  <span className="text-xs text-gray-500 ml-2">{assignedDrivers.length} kursantów</span>
                 </div>
               </div>
             )
           })}
 
           {filteredInstructors.length === 0 && (
-            <div className="p-8 text-center text-gray-500">No instructors found matching "{searchQuery}"</div>
+            <div className="p-8 text-center text-gray-500">
+              Nie znaleziono instruktorów pasujących do "{searchQuery}"
+            </div>
           )}
         </div>
       </div>
 
-      {/* Instructor details */}
+      {/* Szczegóły instruktora */}
       <div className="w-2/3 overflow-y-auto">
         {selectedInstructor ? (
           <div className="p-6">
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">{selectedInstructor.name}</h2>
-                <p className="text-gray-500">License Types: {selectedInstructor.licenseTypes.join(", ")}</p>
+                <p className="text-gray-500">Kategorie prawa jazdy: {selectedInstructor.licenseTypes.join(", ")}</p>
               </div>
               <div
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
                   selectedInstructor.status === "active" ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                 }`}
               >
-                {selectedInstructor.status === "active" ? "Active" : "Inactive"}
+                {selectedInstructor.status === "active" ? "Aktywny" : "Nieaktywny"}
               </div>
             </div>
 
@@ -159,7 +158,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               <div className="flex items-center">
                 <Phone className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">Phone</div>
+                  <div className="text-sm text-gray-500">Telefon</div>
                   <div>{selectedInstructor.phone}</div>
                 </div>
               </div>
@@ -175,7 +174,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">Hire Date</div>
+                  <div className="text-sm text-gray-500">Data zatrudnienia</div>
                   <div>{selectedInstructor.hireDate}</div>
                 </div>
               </div>
@@ -183,22 +182,22 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               <div className="flex items-center">
                 <BookOpen className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">Specialization</div>
+                  <div className="text-sm text-gray-500">Specjalizacja</div>
                   <div>{selectedInstructor.specialization}</div>
                 </div>
               </div>
             </div>
 
             <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Bio</h3>
-              <div className="p-4 bg-gray-50 rounded-md">{selectedInstructor.bio || "No bio available."}</div>
+              <h3 className="text-lg font-medium mb-2">Biografia</h3>
+              <div className="p-4 bg-gray-50 rounded-md">{selectedInstructor.bio || "Brak dostępnej biografii."}</div>
             </div>
 
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium">Assigned Students</h3>
+                <h3 className="text-lg font-medium">Przypisani kursanci</h3>
                 <span className="text-sm text-gray-500">
-                  {getAssignedDrivers(selectedInstructor.id).length} students
+                  {getAssignedDrivers(selectedInstructor.id).length} kursantów
                 </span>
               </div>
 
@@ -211,10 +210,10 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                         <div>
                           <div className="font-medium">{driver.name}</div>
                           <div className="text-sm text-gray-500">
-                            License Type: {driver.licenseType} •
+                            Kategoria: {driver.licenseType} •
                             {driver.remainingHours > 0
-                              ? ` ${driver.remainingHours} hours remaining`
-                              : " Training completed"}
+                              ? ` ${driver.remainingHours} godzin pozostało`
+                              : " Szkolenie ukończone"}
                           </div>
                         </div>
                       </div>
@@ -223,20 +222,20 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                           driver.remainingHours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {driver.remainingHours === 0 ? "Completed" : "In Training"}
+                        {driver.remainingHours === 0 ? "Ukończone" : "W trakcie"}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="text-gray-500 p-4 text-center border rounded-md">
-                  No students assigned to this instructor.
+                  Brak kursantów przypisanych do tego instruktora.
                 </div>
               )}
             </div>
 
             <div>
-              <h3 className="text-lg font-medium mb-2">Upcoming Schedule</h3>
+              <h3 className="text-lg font-medium mb-2">Nadchodzący harmonogram</h3>
               {selectedInstructor.upcomingLessons && selectedInstructor.upcomingLessons.length > 0 ? (
                 <div className="space-y-2">
                   {selectedInstructor.upcomingLessons.map((lesson, index) => (
@@ -244,27 +243,27 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                       <Calendar className="w-5 h-5 mr-3 text-blue-500" />
                       <div>
                         <div className="font-medium">
-                          {lesson.date} at {lesson.time}
+                          {lesson.date} o {lesson.time}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {lesson.duration} hours with {lesson.student}
+                          {lesson.duration} godzin z {lesson.student}
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-gray-500 p-4 text-center border rounded-md">No upcoming lessons scheduled.</div>
+                <div className="text-gray-500 p-4 text-center border rounded-md">Brak zaplanowanych lekcji.</div>
               )}
             </div>
           </div>
         ) : showAddInstructorForm ? (
           <div className="p-6">
-            <h2 className="text-xl font-bold mb-4">Add New Instructor</h2>
+            <h2 className="text-xl font-bold mb-4">Dodaj Nowego Instruktora</h2>
             <form onSubmit={handleAddInstructorSubmit}>
               <div className="grid grid-cols-2 gap-4 mb-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Imię i Nazwisko</label>
                   <input
                     type="text"
                     name="name"
@@ -276,7 +275,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
                   <input
                     type="text"
                     name="phone"
@@ -300,7 +299,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Hire Date</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Data zatrudnienia</label>
                   <input
                     type="date"
                     name="hireDate"
@@ -312,7 +311,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Specjalizacja</label>
                   <input
                     type="text"
                     name="specialization"
@@ -330,14 +329,14 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="active">Aktywny</option>
+                    <option value="inactive">Nieaktywny</option>
                   </select>
                 </div>
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">License Types</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie prawa jazdy</label>
                 <div className="grid grid-cols-5 gap-2">
                   {["A", "B", "C", "D", "E"].map((type) => (
                     <div key={type} className="flex items-center">
@@ -358,7 +357,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Biografia</label>
                 <textarea
                   name="bio"
                   value={newInstructor.bio}
@@ -374,20 +373,20 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   onClick={() => setShowAddInstructorForm(false)}
                 >
-                  Cancel
+                  Anuluj
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
                 >
-                  Add Instructor
+                  Dodaj Instruktora
                 </button>
               </div>
             </form>
           </div>
         ) : (
           <div className="flex items-center justify-center h-full text-gray-500">
-            Select an instructor to view details or add a new instructor.
+            Wybierz instruktora, aby zobaczyć szczegóły lub dodaj nowego instruktora.
           </div>
         )}
       </div>
