@@ -7,11 +7,13 @@ import {
   ChevronRight,
   Plus,
   Users,
+  User,
   Settings,
   Home,
   BookOpen,
   Car,
   CreditCard,
+  Book
 } from "lucide-react"
 
 // Importujemy funkcję translate
@@ -19,14 +21,17 @@ import { translate } from "@/lib/translations"
 
 // Zmieniamy etykiety w menu nawigacyjnym
 const navigationItems = [
-  { id: "dashboard", name: translate("navigation.Pulpit"), icon: Home },
-  { id: "calendar", name: translate("navigation.Kalendarz"), icon: Calendar },
-  { id: "drivers", name: translate("navigation.Profile Kursantów"), icon: Users },
-  { id: "instructors", name: translate("navigation.Profile Instruktorów"), icon: BookOpen },
-  { id: "vehicles", name: translate("navigation.Pojazdy"), icon: Car },
-  { id: "finances", name: translate("navigation.Finanse"), icon: CreditCard },
-  { id: "settings", name: translate("navigation.Ustawienia"), icon: Settings },
+  { id: "dashboard", name: "Pulpit", icon: Home },
+  { id: "calendar", name: "Kalendarz", icon: Calendar },
+  { id: "drivers", name: "Profile Kursantów", icon: Users },
+  { id: "instructors", name: "Profile Instruktorów", icon: BookOpen },
+  { id: "raports", name: "Raporty", icon: Book },
+  { id: "vehicles", name: "Pojazdy", icon: Car },
+  { id: "finances", name: "Finanse", icon: CreditCard },
+  { id: "users", name: "Zarządzanie kontami", icon: User },
+  { id: "settings", name: "Ustawienia", icon: Settings },
 ]
+
 
 export default function Sidebar({
   calendars = [],
@@ -84,7 +89,7 @@ export default function Sidebar({
     <div className="w-64 h-full border-r bg-white overflow-y-auto">
       <div className="flex items-center justify-center p-4 border-b">
         <Calendar className="w-6 h-6 mr-2 text-blue-600" />
-        <h1 className="text-xl font-bold text-gray-800">SzkołaJazdy</h1>
+        <h1 className="text-xl font-bold text-gray-800">Grupa Akademia</h1>
       </div>
 
       <div className="p-4">

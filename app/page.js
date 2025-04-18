@@ -7,12 +7,16 @@ import DriverProfiles from "@/components/driver-profiles"
 import InstructorProfiles from "@/components/instructor-profiles"
 import VehicleManagement from "@/components/vehicle-management"
 import FinanceManagement from "@/components/finance-management"
+import BranchReports from "@/components/reports"
 import EventModal from "@/components/event-modal"
 import Header from "@/components/header"
 import Sidebar from "@/components/sidebar"
 
 // Na początku pliku, dodajemy import funkcji translate z pliku translations
 import { translate } from "@/lib/translations"
+import StatisticsDashboard from "@/components/statistic"
+import { User } from "lucide-react"
+import UserManagement from "@/components/user-management"
 
 export default function DrivingSchoolApp() {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -29,47 +33,7 @@ export default function DrivingSchoolApp() {
     { id: 4, name: "Instructor Availability", color: "#A142F4", type: "other", visible: true },
     { id: 5, name: "Holidays", color: "#EF6C00", type: "other", visible: true },
   ])
-  const [drivers, setDrivers] = useState([
-    {
-      id: 1,
-      name: "John Smith",
-      phone: "555-123-4567",
-      email: "john.smith@example.com",
-      licenseType: "B",
-      startDate: "2023-10-15",
-      completedHours: 20,
-      remainingHours: 10,
-      instructorId: 1,
-      notes: "Good progress, needs more practice with parallel parking.",
-      upcomingLessons: [{ date: "2023-11-20", time: "14:00", duration: 2, instructor: "Michael Johnson" }],
-    },
-    {
-      id: 2,
-      name: "Emma Wilson",
-      phone: "555-987-6543",
-      email: "emma.wilson@example.com",
-      licenseType: "B",
-      startDate: "2023-09-05",
-      completedHours: 30,
-      remainingHours: 0,
-      instructorId: 2,
-      notes: "Completed all required hours. Ready for exam.",
-      upcomingLessons: [],
-    },
-    {
-      id: 3,
-      name: "David Brown",
-      phone: "555-456-7890",
-      email: "david.brown@example.com",
-      licenseType: "A",
-      startDate: "2023-10-25",
-      completedHours: 8,
-      remainingHours: 22,
-      instructorId: 3,
-      notes: "Needs more practice with highway driving.",
-      upcomingLessons: [{ date: "2023-11-22", time: "10:00", duration: 2, instructor: "Robert Miller" }],
-    },
-  ])
+  const [drivers, setDrivers] = useState([])
   const [instructors, setInstructors] = useState([
     {
       id: 1,
@@ -802,138 +766,20 @@ export default function DrivingSchoolApp() {
             <FinanceManagement transactions={transactions} onAddTransaction={handleAddTransaction} />
           </div>
         )
+        case "raports":
+          return (
+            <div className="flex-1 overflow-hidden flex flex-col">
+              <BranchReports  />
+            </div>
+          )
       case "dashboard":
         return (
-          <div className="flex-1 p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-6">{translate("dashboard.Dashboard")}</h1>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-medium mb-4">{translate("dashboard.Active Drivers")}</h2>
-                <div className="text-3xl font-bold text-blue-600">
-                  {drivers.filter((d) => d.remainingHours > 0).length}
-                </div>
-                <div className="text-sm text-gray-500 mt-1">
-                  {drivers.length} {translate("dashboard.total drivers")}
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-medium mb-4">{translate("dashboard.Upcoming Lessons")}</h2>
-                <div className="text-3xl font-bold text-green-600">
-                  {events.filter((e) => new Date(e.date) >= new Date()).length}
-                </div>
-                <div className="text-sm text-gray-500 mt-1">{translate("dashboard.Next 7 days")}</div>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-medium mb-4">{translate("dashboard.Completed Hours")}</h2>
-                <div className="text-3xl font-bold text-purple-600">
-                  {drivers.reduce((total, driver) => total + driver.completedHours, 0)}
-                </div>
-                <div className="text-sm text-gray-500 mt-1">{translate("dashboard.All drivers")}</div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-medium mb-4">{translate("dashboard.Instructor Status")}</h2>
-                <div className="space-y-4">
-                  {instructors.map((instructor) => (
-                    <div key={instructor.id} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
-                        <span>{instructor.name}</span>
-                      </div>
-                      <span className="text-sm text-gray-500">
-                        {drivers.filter((d) => d.instructorId === instructor.id).length}{" "}
-                        {translate("dashboard.students")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-white p-6 rounded-lg shadow">
-                <h2 className="text-lg font-medium mb-4">{translate("dashboard.Vehicle Status")}</h2>
-                <div className="space-y-4">
-                  {vehicles.map((vehicle) => (
-                    <div key={vehicle.id} className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div
-                          className={`w-2 h-2 rounded-full mr-2 ${
-                            vehicle.status === "available"
-                              ? "bg-green-500"
-                              : vehicle.status === "in-use"
-                                ? "bg-blue-500"
-                                : "bg-red-500"
-                          }`}
-                        ></div>
-                        <span>
-                          {vehicle.make} {vehicle.model} ({vehicle.licensePlate})
-                        </span>
-                      </div>
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full ${
-                          vehicle.status === "available"
-                            ? "bg-green-100 text-green-800"
-                            : vehicle.status === "in-use"
-                              ? "bg-blue-100 text-blue-800"
-                              : "bg-red-100 text-red-800"
-                        }`}
-                      >
-                        {vehicle.status === "available"
-                          ? translate("dashboard.Available")
-                          : vehicle.status === "in-use"
-                            ? translate("dashboard.In Use")
-                            : translate("dashboard.Maintenance")}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-8">
-              <h2 className="text-xl font-medium mb-4">{translate("dashboard.Recent Activity")}</h2>
-              <div className="bg-white rounded-lg shadow overflow-hidden">
-                <div className="divide-y">
-                  {events
-                    .filter((e) => new Date(e.date) <= new Date())
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
-                    .slice(0, 5)
-                    .map((event) => {
-                      const driver = drivers.find((d) => d.id === event.driverId)
-                      const instructor = instructors.find((i) => i.id === event.instructorId)
-                      return (
-                        <div key={event.id} className="p-4">
-                          <div className="font-medium">{event.title}</div>
-                          <div className="text-sm text-gray-500">
-                            {new Date(event.date).toLocaleDateString()} at {event.startTime}
-                          </div>
-                          <div className="flex flex-wrap mt-1 gap-2">
-                            {driver && (
-                              <div className="text-sm text-blue-600">
-                                {translate("dashboard.Driver")}: {driver.name}
-                              </div>
-                            )}
-                            {instructor && (
-                              <div className="text-sm text-purple-600">
-                                {translate("dashboard.Instructor")}: {instructor.name}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )
-                    })}
-
-                  {events.filter((e) => new Date(e.date) <= new Date()).length === 0 && (
-                    <div className="p-6 text-center text-gray-500">{translate("dashboard.No recent activities")}</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <StatisticsDashboard/>
         )
+      case "users":
+      return (
+        <UserManagement/>
+       )
       case "settings":
         return (
           <div className="flex-1 p-6">
