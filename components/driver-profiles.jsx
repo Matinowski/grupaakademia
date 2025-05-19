@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useTransition } from "react"
 import {
   Search,
   User,
@@ -14,9 +14,21 @@ import {
   AlertTriangle,
   Edit,
   Check,
+  Trash2,
+  Download,
+  Eye,
 } from "lucide-react"
+import { addDriver, updateDriver, deleteDriver } from "@/app/actions/driver-actions"
+import { useRouter } from "next/navigation"
+import PaymentForm from "@/components/driverProfiels/payment-form"
+import { useAuth } from "@/hooks/use-auth"
+import PdfViewer from "@/components/ui/pdf-viewer"
 
-export default function DriverProfiles({ drivers, instructors = [], onSelectDriver, onAddDriver, onUpdateDriver }) {
+export default function DriverProfiles({ drivers, instructors = [], events }) {
+  const [isPending, startTransition] = useTransition()
+  const router = useRouter()
+  const { user } = useAuth()
+  console.log(drivers)
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDriver, setSelectedDriver] = useState(null)
   const [showAddDriverForm, setShowAddDriverForm] = useState(false)
@@ -25,15 +37,15 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
     name: "",
     phone: "",
     email: "",
-    licenseType: "B",
-    courseType: "basic", // basic or additional
-    startDate: "",
-    contractDate: "",
-    completedHours: 0,
-    remainingHours: 30,
-    instructor: "",
+    license_type: "B",
+    course_type: "basic", // basic or additional
+    start_date: "",
+    contract_date: "",
+    completed_hours: 0,
+    remaining_hours: 30,
+    instructor_id: "", // instructor ID
     notes: "",
-    paymentType: "onetime", // onetime or installments
+    payment_type: "onetime", // onetime or installments
     paymentInstallments: [{ hours: 0, amount: 0 }],
     paymentFiles: [],
     totalPaid: 0,
@@ -41,6 +53,27 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
   const [installments, setInstallments] = useState([{ hours: 0, amount: 0 }])
   const [editedDriver, setEditedDriver] = useState(null)
   const [editInstallments, setEditInstallments] = useState([])
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [pdfPreview, setPdfPreview] = useState(null)
+
+  useEffect(() => {
+    // Jeśli mamy wybranego kierowcę, sprawdź, czy istnieje on na nowej liście
+    const driver_id = selectedDriver?.id
+    if (driver_id) {
+      // Sprawdź, czy wybrany kierowca nadal jest na liście
+      const selected = drivers.find((driver) => driver.id === driver_id)
+      if (selected) {
+        // Jeśli kierowca istnieje, zaktualizuj selectedDriver
+        setSelectedDriver(selected)
+      } else {
+        // Jeśli kierowca nie istnieje na liście, zresetuj selectedDriver
+        setSelectedDriver(null)
+      }
+    } else if (drivers.length > 0) {
+      // Jeśli nie mamy wybranego kierowcy i lista kierowców nie jest pusta, ustaw pierwszego kierowcę jako wybranego
+      setSelectedDriver(drivers[0])
+    }
+  }, [drivers]) // Uruchom efekty tylko wtedy, gdy lista drivers się zmienia
 
   // Filtruj kierowców na podstawie zapytania wyszukiwania
   const filteredDrivers = drivers.filter(
@@ -50,57 +83,119 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
       driver.email.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-  const handleDriverSelect = (driver) => {
-    setSelectedDriver(driver)
-    setEditMode(false)
-    if (onSelectDriver) {
-      onSelectDriver(driver)
-    }
+  function formatDate(dateString) {
+    const date = new Date(dateString)
+    const day = String(date.getUTCDate()).padStart(2, "0")
+    const month = String(date.getUTCMonth() + 1).padStart(2, "0")
+    const year = date.getUTCFullYear()
+    return `${day}.${month}.${year}`
   }
 
-  const handleAddDriverSubmit = (e) => {
+  function calculateDuration(startTime, endTime) {
+    const [startHour, startMinute] = startTime.split(":").map(Number)
+    const [endHour, endMinute] = endTime.split(":").map(Number)
+
+    const startTotal = startHour * 60 + startMinute
+    const endTotal = endHour * 60 + endMinute
+
+    const durationMinutes = endTotal - startTotal
+    const durationHours = durationMinutes / 60
+
+    return durationHours.toFixed(1) // np. 1.5
+  }
+
+  const handleDriverSelect = async (driver) => {
+    setSelectedDriver(driver)
+    console.log("Selected driver:", driver)
+    setEditMode(false)
+    setConfirmDelete(false)
+  }
+
+  const handleAddDriverSubmit = async (e) => {
     e.preventDefault()
 
     // Add installments to the new driver object
     const driverWithInstallments = {
       ...newDriver,
-      paymentInstallments: newDriver.paymentType === "installments" ? installments : [],
+      paymentInstallments: newDriver.payment_type === "installments" ? installments : [],
     }
 
-    onAddDriver(driverWithInstallments)
-    setNewDriver({
-      name: "",
-      phone: "",
-      email: "",
-      licenseType: "B",
-      courseType: "basic",
-      startDate: "",
-      contractDate: "",
-      completedHours: 0,
-      remainingHours: 30,
-      instructor: "",
-      notes: "",
-      paymentType: "onetime",
-      paymentInstallments: [],
-      paymentFiles: [],
-      totalPaid: 0,
-    })
-    setInstallments([{ hours: 0, amount: 0 }])
-    setShowAddDriverForm(false)
-  }
+    startTransition(async () => {
+      const result = await addDriver(driverWithInstallments)
 
-  const handleEditDriverSubmit = (e) => {
+      if (result.success) {
+        // Refresh the page to get updated data
+        router.refresh()
+
+        // Reset form
+        setNewDriver({
+          name: "",
+          phone: "",
+          email: "",
+          license_type: "B",
+          course_type: "basic",
+          start_date: "",
+          contract_date: "",
+          completed_hours: 0,
+          remaining_hours: 30,
+          instructor_id: "",
+          notes: "",
+          payment_type: "onetime",
+          paymentInstallments: [],
+          paymentFiles: [],
+          totalPaid: 0,
+        })
+        setInstallments([{ hours: 0, amount: 0 }])
+        setShowAddDriverForm(false)
+      } else {
+        alert(`Błąd podczas dodawania kierowcy: ${result.error}`)
+      }
+    })
+  }
+  console.log(instructors[0])
+  const handleEditDriverSubmit = async (e) => {
     e.preventDefault()
 
     // Add installments to the edited driver object
     const updatedDriver = {
       ...editedDriver,
-      paymentInstallments: editedDriver.paymentType === "installments" ? editInstallments : [],
+      instructor_id: editedDriver.instructor_id, // Add this line to ensure instructor_id is properly set
+      paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
     }
 
-    onUpdateDriver(updatedDriver)
-    setSelectedDriver(updatedDriver)
-    setEditMode(false)
+    startTransition(async () => {
+      const result = await updateDriver(updatedDriver)
+
+      if (result.success) {
+        // Refresh the page to get updated data
+        router.refresh()
+
+        // Update local state
+        setSelectedDriver(updatedDriver)
+        setEditMode(false)
+      } else {
+        alert(`Błąd podczas aktualizacji kierowcy: ${result.error}`)
+      }
+    })
+  }
+
+  const handleDeleteDriver = () => {
+    if (!selectedDriver) return
+
+    startTransition(async () => {
+      const result = await deleteDriver(selectedDriver.id)
+
+      if (result.success) {
+        // Refresh the page to get updated data
+        router.refresh()
+
+        // Reset selected driver
+        setSelectedDriver(null)
+        setConfirmDelete(false)
+      } else {
+        alert(`Błąd podczas usuwania kierowcy: ${result.error}`)
+      }
+    })
   }
 
   const handleInputChange = (e) => {
@@ -173,7 +268,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
     const files = Array.from(e.target.files)
     setEditedDriver({
       ...editedDriver,
-      paymentFiles: [...editedDriver.paymentFiles, ...files],
+      paymentFiles: [...(editedDriver.paymentFiles || []), ...files],
+      newPaymentFiles: [...(editedDriver.newPaymentFiles || []), ...files],
     })
   }
 
@@ -187,22 +283,51 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
   }
 
   const removeEditFile = (index) => {
-    const updatedFiles = [...editedDriver.paymentFiles]
+    // Check if this is an existing file or a new file
+    const isExistingFile = index < editedDriver.paymentFiles?.length - (editedDriver.newPaymentFiles?.length || 0)
+
+    if (isExistingFile) {
+      // Mark the file for deletion in the database
+      const filesToDelete = editedDriver.filesToDelete || []
+      filesToDelete.push(editedDriver.paymentFiles[index])
+
+      setEditedDriver({
+        ...editedDriver,
+        filesToDelete,
+      })
+    }
+
+    const updatedFiles = [...(editedDriver.paymentFiles || [])]
     updatedFiles.splice(index, 1)
+
+    // Also update newPaymentFiles if applicable
+    const updatedNewFiles = [...(editedDriver.newPaymentFiles || [])]
+    if (!isExistingFile) {
+      const newFileIndex = index - (editedDriver.paymentFiles?.length - updatedNewFiles.length)
+      if (newFileIndex >= 0) {
+        updatedNewFiles.splice(newFileIndex, 1)
+      }
+    }
+
     setEditedDriver({
       ...editedDriver,
       paymentFiles: updatedFiles,
+      newPaymentFiles: updatedNewFiles,
     })
   }
 
   const startEditMode = () => {
-    setEditedDriver({ ...selectedDriver })
+    setEditedDriver({
+      ...selectedDriver,
+      instructor_id: selectedDriver.instructor_id, // Ensure instructor_id is properly set from instructor_id
+    })
     setEditInstallments(
       selectedDriver.paymentInstallments?.length > 0
         ? [...selectedDriver.paymentInstallments]
         : [{ hours: 0, amount: 0 }],
     )
     setEditMode(true)
+    setConfirmDelete(false)
   }
 
   const cancelEditMode = () => {
@@ -214,28 +339,32 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
     if (!driver.paymentInstallments || driver.paymentInstallments.length === 0) return false
 
     for (const installment of driver.paymentInstallments) {
-      if (driver.completedHours >= installment.hours && driver.totalPaid < installment.amount) {
+      if (driver.completed_hours >= installment.hours && driver.totalPaid < installment.amount) {
         return true
       }
     }
     return false
   }
 
-  // Get the current payment threshold
-  const getCurrentPaymentThreshold = (driver) => {
-    if (!driver.paymentInstallments || driver.paymentInstallments.length === 0) return null
+  const handlePreviewFile = (file) => {
+    setPdfPreview(file)
+  }
 
-    let currentThreshold = null
-    for (const installment of driver.paymentInstallments) {
-      if (driver.completedHours >= installment.hours) {
-        currentThreshold = installment
-      }
-    }
-    return currentThreshold
+  const handleClosePreview = () => {
+    setPdfPreview(null)
+  }
+
+  // Sprawdź, czy plik jest PDF-em
+  const isPdfFile = (file) => {
+    return (
+      file.name.toLowerCase().endsWith(".pdf") ||
+      file.type === "application/pdf" ||
+      (file.path && file.path.toLowerCase().endsWith(".pdf"))
+    )
   }
 
   return (
-    <div className="h-full flex">
+    <div className="h-full flex overflow-y-scroll">
       {/* Lista kierowców */}
       <div className="w-1/3 border-r overflow-y-auto">
         <div className="p-4 border-b sticky top-0 bg-white z-10">
@@ -252,6 +381,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
           <button
             className="mt-3 flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
             onClick={() => setShowAddDriverForm(true)}
+            disabled={isPending}
           >
             <Plus className="w-4 h-4 mr-1" />
             Dodaj Nowego Kierowcę
@@ -271,10 +401,10 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
               <div className="mt-1 flex items-center gap-2">
                 <span
                   className={`text-xs px-2 py-1 rounded-full ${
-                    driver.remainingHours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                    driver.remaining_hours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                   }`}
                 >
-                  {driver.remainingHours === 0 ? "Ukończono" : `${driver.remainingHours} godzin pozostało`}
+                  {driver.remaining_hours === 0 ? "Ukończono" : `${driver.remaining_hours} godzin pozostało`}
                 </span>
 
                 {hasMissedPayment(driver) && (
@@ -300,25 +430,36 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">{selectedDriver.name}</h2>
-                <p className="text-gray-500">Typ Prawa Jazdy: {selectedDriver.licenseType}</p>
+                <p className="text-gray-500">Typ Prawa Jazdy: {selectedDriver.license_type}</p>
                 <p className="text-gray-500">
-                  Typ Kursu: {selectedDriver.courseType === "basic" ? "Podstawowy" : "Dodatkowy"}
+                  Typ Kursu: {selectedDriver.course_type === "basic" ? "Podstawowy" : "Dodatkowy"}
                 </p>
               </div>
               <div className="flex flex-col gap-2">
-                <button
-                  onClick={startEditMode}
-                  className="flex items-center px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                >
-                  <Edit className="w-4 h-4 mr-1" />
-                  Edytuj Profil
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={startEditMode}
+                    className="flex items-center px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                    disabled={isPending}
+                  >
+                    <Edit className="w-4 h-4 mr-1" />
+                    Edytuj Profil
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="flex items-center px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                    disabled={isPending}
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Usuń
+                  </button>
+                </div>
                 <div
                   className={`px-3 py-1 rounded-full text-sm font-medium ${
-                    selectedDriver.remainingHours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                    selectedDriver.remaining_hours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                   }`}
                 >
-                  {selectedDriver.remainingHours === 0 ? "Szkolenie Ukończone" : "W Trakcie Szkolenia"}
+                  {selectedDriver.remaining_hours === 0 ? "Szkolenie Ukończone" : "W Trakcie Szkolenia"}
                 </div>
 
                 {hasMissedPayment(selectedDriver) && (
@@ -329,6 +470,30 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 )}
               </div>
             </div>
+
+            {confirmDelete && (
+              <div className="mb-6 p-4 border border-red-300 bg-red-50 rounded-md">
+                <h3 className="text-lg font-medium text-red-800 mb-2">Potwierdź usunięcie</h3>
+                <p className="text-red-700 mb-4">
+                  Czy na pewno chcesz usunąć tego kierowcę? Ta operacja jest nieodwracalna.
+                </p>
+                <div className="flex justify-end gap-2">
+                  <button
+                    onClick={() => setConfirmDelete(false)}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                  >
+                    Anuluj
+                  </button>
+                  <button
+                    onClick={handleDeleteDriver}
+                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                    disabled={isPending}
+                  >
+                    {isPending ? "Usuwanie..." : "Tak, usuń"}
+                  </button>
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-6 mb-6">
               <div className="flex items-center">
@@ -351,7 +516,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Data Rozpoczęcia</div>
-                  <div>{selectedDriver.startDate}</div>
+                  <div>{selectedDriver.start_date}</div>
                 </div>
               </div>
 
@@ -359,7 +524,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <FileText className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Data Zawarcia Umowy</div>
-                  <div>{selectedDriver.contractDate || "-"}</div>
+                  <div>{selectedDriver.contract_date || "-"}</div>
                 </div>
               </div>
 
@@ -367,7 +532,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <User className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Instruktor</div>
-                  <div>{selectedDriver.instructor}</div>
+                  <div>{selectedDriver.instructor || "-"}</div>
                 </div>
               </div>
 
@@ -375,7 +540,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Ukończone Godziny</div>
-                  <div>{selectedDriver.completedHours}</div>
+                  <div>{selectedDriver.completed_hours}</div>
                 </div>
               </div>
 
@@ -383,7 +548,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Pozostałe Godziny</div>
-                  <div>{selectedDriver.remainingHours}</div>
+                  <div>{selectedDriver.remaining_hours}</div>
                 </div>
               </div>
 
@@ -391,7 +556,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <CreditCard className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Typ Płatności</div>
-                  <div>{selectedDriver.paymentType === "onetime" ? "Jednorazowa" : "Raty"}</div>
+                  <div>{selectedDriver.payment_type === "onetime" ? "Jednorazowa" : "Raty"}</div>
                 </div>
               </div>
             </div>
@@ -402,90 +567,52 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div
                   className="bg-blue-600 h-2.5 rounded-full"
                   style={{
-                    width: `${(selectedDriver.completedHours / (selectedDriver.completedHours + selectedDriver.remainingHours)) * 100}%`,
+                    width: `${(selectedDriver.completed_hours / (selectedDriver.completed_hours + selectedDriver.remaining_hours)) * 100}%`,
                   }}
                 ></div>
               </div>
               <div className="text-sm text-gray-500 mt-1">
                 {Math.round(
-                  (selectedDriver.completedHours / (selectedDriver.completedHours + selectedDriver.remainingHours)) *
+                  (selectedDriver.completed_hours / (selectedDriver.completed_hours + selectedDriver.remaining_hours)) *
                     100,
                 )}
                 % ukończone
               </div>
             </div>
 
-            {selectedDriver.paymentType === "installments" &&
-              selectedDriver.paymentInstallments &&
-              selectedDriver.paymentInstallments.length > 0 && (
-                <div className="mb-6">
-                  <h3 className="text-lg font-medium mb-2">Harmonogram Płatności</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Po Godzinach
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Kwota
-                          </th>
-                          <th
-                            scope="col"
-                            className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                          >
-                            Status
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {selectedDriver.paymentInstallments.map((installment, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{installment.hours}h</td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                              {installment.amount} PLN
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              {selectedDriver.completedHours >= installment.hours ? (
-                                selectedDriver.totalPaid >= installment.amount ? (
-                                  <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">
-                                    Opłacone
-                                  </span>
-                                ) : (
-                                  <span className="px-2 py-1 text-xs rounded-full bg-red-100 text-red-800">
-                                    Zaległa płatność
-                                  </span>
-                                )
-                              ) : (
-                                <span className="px-2 py-1 text-xs rounded-full bg-gray-100 text-gray-800">
-                                  Oczekujące
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
             {selectedDriver.paymentFiles && selectedDriver.paymentFiles.length > 0 && (
               <div className="mb-6">
                 <h3 className="text-lg font-medium mb-2">Potwierdzenia Płatności</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {selectedDriver.paymentFiles.map((file, index) => (
-                    <div key={index} className="border rounded-md p-3 flex items-center">
-                      <FileText className="w-5 h-5 mr-2 text-blue-500" />
-                      <div className="overflow-hidden">
-                        <div className="font-medium truncate">{file.name}</div>
-                        <div className="text-xs text-gray-500">{new Date(file.lastModified).toLocaleDateString()}</div>
+                    <div key={index} className="border rounded-md p-3 flex items-center justify-between">
+                      <div className="flex items-center overflow-hidden">
+                        <FileText className="w-5 h-5 mr-2 text-blue-500 flex-shrink-0" />
+                        <div className="overflow-hidden">
+                          <div className="font-medium truncate">{file.name}</div>
+                          <div className="text-xs text-gray-500">
+                            {new Date(file.lastModified).toLocaleDateString()}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        {isPdfFile(file) && (
+                          <button
+                            onClick={() => handlePreviewFile(file)}
+                            className="p-1 text-blue-600 hover:text-blue-800"
+                            title="Podgląd"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
+                        <a
+                          href={file.path}
+                          download={file.name}
+                          className="p-1 text-blue-600 hover:text-blue-800"
+                          title="Pobierz"
+                        >
+                          <Download className="w-4 h-4" />
+                        </a>
                       </div>
                     </div>
                   ))}
@@ -498,19 +625,24 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
               <div className="p-4 bg-gray-50 rounded-md">{selectedDriver.notes || "Brak dostępnych notatek."}</div>
             </div>
 
+            <div className="mb-6">
+              <PaymentForm driver_id={selectedDriver.id} driver={selectedDriver} userId={user.id} />
+            </div>
+
             <div>
-              <h3 className="text-lg font-medium mb-2">Nadchodzące Lekcje</h3>
-              {selectedDriver.upcomingLessons && selectedDriver.upcomingLessons.length > 0 ? (
+              <h3 className="text-lg font-medium mb-2">Lekcje</h3>
+              {selectedDriver.events && selectedDriver.events.length > 0 ? (
                 <div className="space-y-2">
-                  {selectedDriver.upcomingLessons.map((lesson, index) => (
+                  {selectedDriver.events.map((lesson, index) => (
                     <div key={index} className="p-3 border rounded-md flex items-center">
                       <Calendar className="w-5 h-5 mr-3 text-blue-500" />
                       <div>
                         <div className="font-medium">
-                          {lesson.date} o {lesson.time}
+                          {formatDate(lesson.date)} o {lesson.start_time}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {lesson.duration} godzin z {lesson.instructor}
+                          {calculateDuration(lesson.start_time, lesson.end_time)} godzin z{" "}
+                          {lesson.instructor.name || "nieznanym instruktorem"}
                         </div>
                       </div>
                     </div>
@@ -565,8 +697,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Prawa Jazdy</label>
                   <select
-                    name="licenseType"
-                    value={editedDriver.licenseType}
+                    name="license_type"
+                    value={editedDriver.license_type}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -581,8 +713,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Kursu</label>
                   <select
-                    name="courseType"
-                    value={editedDriver.courseType}
+                    name="course_type"
+                    value={editedDriver.course_type}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -595,8 +727,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Rozpoczęcia</label>
                   <input
                     type="date"
-                    name="startDate"
-                    value={editedDriver.startDate}
+                    name="start_date"
+                    value={editedDriver.start_date}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -607,8 +739,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Zawarcia Umowy</label>
                   <input
                     type="date"
-                    name="contractDate"
-                    value={editedDriver.contractDate || ""}
+                    name="contract_date"
+                    value={editedDriver.contract_date || ""}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -617,14 +749,14 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Instruktor</label>
                   <select
-                    name="instructor"
-                    value={editedDriver.instructor}
+                    name="instructor_id"
+                    value={editedDriver.instructor_id || ""}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Wybierz instruktora</option>
-                    {instructors.map((instructor, index) => (
-                      <option key={index} value={instructor.name}>
+                    {instructors.map((instructor) => (
+                      <option key={instructor.id} value={instructor.id}>
                         {instructor.name}
                       </option>
                     ))}
@@ -635,8 +767,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ukończone Godziny</label>
                   <input
                     type="number"
-                    name="completedHours"
-                    value={editedDriver.completedHours}
+                    name="completed_hours"
+                    value={editedDriver.completed_hours}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
@@ -647,8 +779,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pozostałe Godziny</label>
                   <input
                     type="number"
-                    name="remainingHours"
-                    value={editedDriver.remainingHours}
+                    name="remaining_hours"
+                    value={editedDriver.remaining_hours}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
@@ -674,9 +806,9 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      name="paymentType"
+                      name="payment_type"
                       value="onetime"
-                      checked={editedDriver.paymentType === "onetime"}
+                      checked={editedDriver.payment_type === "onetime"}
                       onChange={handleEditInputChange}
                       className="mr-2"
                     />
@@ -685,9 +817,9 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      name="paymentType"
+                      name="payment_type"
                       value="installments"
-                      checked={editedDriver.paymentType === "installments"}
+                      checked={editedDriver.payment_type === "installments"}
                       onChange={handleEditInputChange}
                       className="mr-2"
                     />
@@ -696,7 +828,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 </div>
               </div>
 
-              {editedDriver.paymentType === "installments" && (
+              {editedDriver.payment_type === "installments" && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium text-gray-700">Harmonogram Rat</label>
@@ -807,15 +939,23 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   type="button"
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   onClick={cancelEditMode}
+                  disabled={isPending}
                 >
                   Anuluj
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 flex items-center"
+                  disabled={isPending}
                 >
-                  <Check className="w-4 h-4 mr-1" />
-                  Zapisz Zmiany
+                  {isPending ? (
+                    "Zapisywanie..."
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-1" />
+                      Zapisz Zmiany
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -864,8 +1004,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Prawa Jazdy</label>
                   <select
-                    name="licenseType"
-                    value={newDriver.licenseType}
+                    name="license_type"
+                    value={newDriver.license_type}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -880,8 +1020,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Kursu</label>
                   <select
-                    name="courseType"
-                    value={newDriver.courseType}
+                    name="course_type"
+                    value={newDriver.course_type}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
@@ -894,8 +1034,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Rozpoczęcia</label>
                   <input
                     type="date"
-                    name="startDate"
-                    value={newDriver.startDate}
+                    name="start_date"
+                    value={newDriver.start_date}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -906,8 +1046,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Zawarcia Umowy</label>
                   <input
                     type="date"
-                    name="contractDate"
-                    value={newDriver.contractDate}
+                    name="contract_date"
+                    value={newDriver.contract_date}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
@@ -916,15 +1056,15 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Instruktor</label>
                   <select
-                    name="instructor"
-                    value={newDriver.instructor}
+                    name="instructor_id"
+                    value={newDriver.instructor_id}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
                     <option value="">Wybierz instruktora</option>
-                    {instructors.map((instructor, index) => (
-                      <option key={index} value={instructor.name}>
-                        {instructor.name}
+                    {instructors.map((instructor) => (
+                      <option key={instructor.id} value={instructor.id}>
+                        {instructor.name + " " + instructor.surname}
                       </option>
                     ))}
                   </select>
@@ -934,8 +1074,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ukończone Godziny</label>
                   <input
                     type="number"
-                    name="completedHours"
-                    value={newDriver.completedHours}
+                    name="completed_hours"
+                    value={newDriver.completed_hours}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
@@ -946,8 +1086,8 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="block text-sm font-medium text-gray-700 mb-1">Pozostałe Godziny</label>
                   <input
                     type="number"
-                    name="remainingHours"
-                    value={newDriver.remainingHours}
+                    name="remaining_hours"
+                    value={newDriver.remaining_hours}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
@@ -961,9 +1101,9 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      name="paymentType"
+                      name="payment_type"
                       value="onetime"
-                      checked={newDriver.paymentType === "onetime"}
+                      checked={newDriver.payment_type === "onetime"}
                       onChange={handleInputChange}
                       className="mr-2"
                     />
@@ -972,9 +1112,9 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   <label className="flex items-center">
                     <input
                       type="radio"
-                      name="paymentType"
+                      name="payment_type"
                       value="installments"
-                      checked={newDriver.paymentType === "installments"}
+                      checked={newDriver.payment_type === "installments"}
                       onChange={handleInputChange}
                       className="mr-2"
                     />
@@ -983,7 +1123,7 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                 </div>
               </div>
 
-              {newDriver.paymentType === "installments" && (
+              {newDriver.payment_type === "installments" && (
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-sm font-medium text-gray-700">Harmonogram Rat</label>
@@ -1086,14 +1226,16 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
                   type="button"
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
                   onClick={() => setShowAddDriverForm(false)}
+                  disabled={isPending}
                 >
                   Anuluj
                 </button>
                 <button
                   type="submit"
                   className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                  disabled={isPending}
                 >
-                  Dodaj Kierowcę
+                  {isPending ? "Dodawanie..." : "Dodaj Kierowcę"}
                 </button>
               </div>
             </form>
@@ -1104,6 +1246,9 @@ export default function DriverProfiles({ drivers, instructors = [], onSelectDriv
           </div>
         )}
       </div>
+
+      {/* PDF Preview Modal */}
+      {pdfPreview && <PdfViewer file={pdfPreview} onClose={handleClosePreview} />}
     </div>
   )
 }

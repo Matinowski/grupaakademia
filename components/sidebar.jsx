@@ -11,47 +11,76 @@ import {
   Settings,
   Home,
   BookOpen,
-  Car,
   CreditCard,
-  Book
+  Database,
+  Book,
 } from "lucide-react"
 
-// Importujemy funkcję translate
-import { translate } from "@/lib/translations"
+import { useAuth } from "@/hooks/use-auth"
 
-// Zmieniamy etykiety w menu nawigacyjnym
-const navigationItems = [
-  { id: "dashboard", name: "Pulpit", icon: Home },
-  { id: "calendar", name: "Kalendarz", icon: Calendar },
-  { id: "drivers", name: "Profile Kursantów", icon: Users },
-  { id: "instructors", name: "Profile Instruktorów", icon: BookOpen },
-  { id: "raports", name: "Raporty", icon: Book },
-  { id: "vehicles", name: "Pojazdy", icon: Car },
-  { id: "finances", name: "Finanse", icon: CreditCard },
-  { id: "users", name: "Zarządzanie kontami", icon: User },
-  { id: "settings", name: "Ustawienia", icon: Settings },
-]
+
 
 
 export default function Sidebar({
   calendars = [],
+  instructors = [],
+  drivers = [],
   onCalendarToggle,
   onAddCalendar,
   onCalendarColorChange,
   activeSection,
   onSectionChange,
+  onInstructorToggle,
+  onDriverToggle,
 }) {
+  console.log("Sidebar calendars:", calendars)
   const [expanded, setExpanded] = useState({
     myCalendars: true,
     otherCalendars: false,
     navigation: true,
+    instructors: false,
+    drivers: false,
   })
 
   const [newCalendarName, setNewCalendarName] = useState("")
   const [showAddCalendarInput, setShowAddCalendarInput] = useState(false)
+  const [selectedInstructors, setSelectedInstructors] = useState({})
+  const [selectedDrivers, setSelectedDrivers] = useState({})
 
-  const myCalendars = calendars.filter((cal) => cal.type === "my")
-  const otherCalendars = calendars.filter((cal) => cal.type === "other")
+    const { user } = useAuth()
+    let navigationItems = []
+
+    if(user && user.role === "admin") {
+      // Zmieniamy etykiety w menu nawigacyjnym
+      navigationItems = [
+  { id: "dashboard", name: "Pulpit", icon: Home },
+  { id: "calendar", name: "Kalendarz", icon: Calendar },
+  { id: "drivers", name: "Profile Kursantów", icon: Users },
+  { id: "instructors", name: "Profile Instruktorów", icon: BookOpen },
+  { id: "raports", name: "Raporty", icon: Book },
+  { id: "finances", name: "Finanse", icon: CreditCard },
+  { id: "excel", name: "Wykaz data/placowka/licencja", icon: Database },
+  { id: "users", name: "Zarządzanie kontami", icon: User },
+]
+
+    } else if(user && user.role === "instructor") { 
+      navigationItems = [
+        { id: "calendar", name: "Kalendarz", icon: Calendar },
+        { id: "drivers", name: "Profile Kursantów", icon: Users },
+      ]
+    } else if(user && user.role === "biuro") { 
+      navigationItems = [
+        { id: "calendar", name: "Kalendarz", icon: Calendar },
+        { id: "drivers", name: "Profile Kursantów", icon: Users },
+        { id: "instructors", name: "Profile Instruktorów", icon: BookOpen },
+        { id: "raports", name: "Raporty", icon: Book },
+        { id: "excel", name: "Wykaz data/placowka/licencja", icon: Database },
+      ]
+
+    }
+
+
+    console.log("User from sidebar:", user)
 
   const toggleSection = (section) => {
     setExpanded({
@@ -64,12 +93,33 @@ export default function Sidebar({
     onCalendarToggle(calendarId)
   }
 
-  const handleAddCalendar = (type) => {
+  const handleInstructorToggle = (instructor_id) => {
+    const newSelectedInstructors = {
+      ...selectedInstructors,
+      [instructor_id]: !selectedInstructors[instructor_id],
+    }
+    setSelectedInstructors(newSelectedInstructors)
+    if (onInstructorToggle) {
+      onInstructorToggle(instructor_id, newSelectedInstructors[instructor_id])
+    }
+  }
+
+  const handleDriverToggle = (driver_id) => {
+    const newSelectedDrivers = {
+      ...selectedDrivers,
+      [driver_id]: !selectedDrivers[driver_id],
+    }
+    setSelectedDrivers(newSelectedDrivers)
+    if (onDriverToggle) {
+      onDriverToggle(driver_id, newSelectedDrivers[driver_id])
+    }
+  }
+
+  const handleAddCalendar = () => {
     if (showAddCalendarInput) {
       if (newCalendarName.trim()) {
         onAddCalendar({
           name: newCalendarName.trim(),
-          type: type,
           color: getRandomColor(),
         })
         setNewCalendarName("")
@@ -137,7 +187,7 @@ export default function Sidebar({
                 onClick={() => toggleSection("myCalendars")}
               >
                 {/* Zmieniamy teksty sekcji kalendarza */}
-                <span className="font-medium text-gray-700">{translate("calendar.Moje kalendarze")}</span>
+                <span className="font-medium text-gray-700">Kalendarze</span>
                 {expanded.myCalendars ? (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 ) : (
@@ -147,7 +197,7 @@ export default function Sidebar({
 
               {expanded.myCalendars && (
                 <div className="ml-2 space-y-2">
-                  {myCalendars.map((calendar) => (
+                  {calendars.map((calendar) => (
                     <div key={calendar.id} className="flex items-center">
                       <input
                         type="checkbox"
@@ -178,7 +228,7 @@ export default function Sidebar({
                         type="text"
                         value={newCalendarName}
                         onChange={(e) => setNewCalendarName(e.target.value)}
-                        placeholder={translate("calendar.Nazwa kalendarza")}
+                        placeholder={"Nazwa kalendarza"}
                         className="text-sm border rounded px-2 py-1 w-full"
                         autoFocus
                         onKeyDown={(e) => {
@@ -194,84 +244,85 @@ export default function Sidebar({
                   ) : (
                     <button
                       className="flex items-center text-sm text-gray-600 mt-2 hover:text-blue-600"
-                      onClick={() => handleAddCalendar("my")}
+                      onClick={() => handleAddCalendar()}
                     >
                       <Plus className="w-4 h-4 mr-1" />
-                      {/* Zmieniamy tekst przycisku dodawania kalendarza */}
-                      {translate("calendar.Dodaj kalendarz")}
+                      Dodaj nowy kalendarz
                     </button>
                   )}
                 </div>
               )}
             </div>
 
-            <div>
+            {/* Sekcja instruktorów */}
+            <div className="mb-4">
               <button
                 className="flex items-center justify-between w-full text-left mb-2"
-                onClick={() => toggleSection("otherCalendars")}
+                onClick={() => toggleSection("instructors")}
               >
-                {/* Zmieniamy teksty sekcji kalendarza */}
-                <span className="font-medium text-gray-700">{translate("calendar.Inne kalendarze")}</span>
-                {expanded.otherCalendars ? (
+                <span className="font-medium text-gray-700">Instruktorzy</span>
+                {expanded.instructors ? (
                   <ChevronDown className="w-4 h-4 text-gray-500" />
                 ) : (
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 )}
               </button>
 
-              {expanded.otherCalendars && (
+              {expanded.instructors && (
                 <div className="ml-2 space-y-2">
-                  {otherCalendars.map((calendar) => (
-                    <div key={calendar.id} className="flex items-center">
+                  {instructors.map((instructor) => (
+                    <div key={instructor.id} className="flex items-center">
                       <input
                         type="checkbox"
-                        id={`cal-${calendar.id}`}
+                        id={`instructor-${instructor.id}`}
                         className="mr-2"
-                        checked={calendar.visible}
-                        onChange={() => handleCalendarToggle(calendar.id)}
+                        checked={!!selectedInstructors[instructor.id]}
+                        onChange={() => handleInstructorToggle(instructor.id)}
                       />
-                      <div
-                        className="w-3 h-3 rounded-full mr-2 cursor-pointer"
-                        style={{ backgroundColor: calendar.color }}
-                        onClick={() => {
-                          const newColor = getRandomColor()
-                          onCalendarColorChange(calendar.id, newColor)
-                        }}
-                        title="Kliknij, aby zmienić kolor"
-                      ></div>
-                      <label htmlFor={`cal-${calendar.id}`} className="text-sm text-gray-700">
-                        {calendar.name}
+                      <label htmlFor={`instructor-${instructor.id}`} className="text-sm text-gray-700">
+                        {instructor.name}
                       </label>
                     </div>
                   ))}
+                  {instructors.length === 0 && (
+                    <div className="text-sm text-gray-500 italic">Brak dostępnych instruktorów</div>
+                  )}
+                </div>
+              )}
+            </div>
 
-                  {showAddCalendarInput && expanded.otherCalendars ? (
-                    <div className="flex items-center mt-2">
+            {/* Sekcja kursantów */}
+            <div className="mb-4">
+              <button
+                className="flex items-center justify-between w-full text-left mb-2"
+                onClick={() => toggleSection("drivers")}
+              >
+                <span className="font-medium text-gray-700">Kursanci</span>
+                {expanded.drivers ? (
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
+                ) : (
+                  <ChevronRight className="w-4 h-4 text-gray-500" />
+                )}
+              </button>
+
+              {expanded.drivers && (
+                <div className="ml-2 space-y-2">
+                  {drivers.map((driver) => (
+                    <div key={driver.id} className="flex items-center">
                       <input
-                        type="text"
-                        value={newCalendarName}
-                        onChange={(e) => setNewCalendarName(e.target.value)}
-                        placeholder="Nazwa kalendarza"
-                        className="text-sm border rounded px-2 py-1 w-full"
-                        autoFocus
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") {
-                            handleAddCalendar("other")
-                          } else if (e.key === "Escape") {
-                            setShowAddCalendarInput(false)
-                            setNewCalendarName("")
-                          }
-                        }}
+                        type="checkbox"
+                        id={`driver-${driver.id}`}
+                        className="mr-2"
+                        checked={!!selectedDrivers[driver.id]}
+                        onChange={() => handleDriverToggle(driver.id)}
                       />
+                      <label htmlFor={`driver-${driver.id}`} className="text-sm text-gray-700">
+                        {driver.name}
+                      </label>
                     </div>
-                  ) : (
-                    <button
-                      className="flex items-center text-sm text-gray-600 mt-2 hover:text-blue-600"
-                      onClick={() => handleAddCalendar("other")}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Dodaj kalendarz
-                    </button>
+                  ))}
+                  {drivers.length === 0 && (
+                    <div className="text-sm text-gray-500 italic">Brak dostępnych kursantów</div>
                   )}
                 </div>
               )}
@@ -282,4 +333,3 @@ export default function Sidebar({
     </div>
   )
 }
-

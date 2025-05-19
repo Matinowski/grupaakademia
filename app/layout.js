@@ -1,5 +1,8 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import { LoadingProvider } from "@/hooks/use-loading-screen"
+import { NotificationProvider } from "@/hooks/use-notification"
 import "./globals.css";
+import { AuthProvider } from "@/hooks/use-auth";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,11 +21,15 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
+    <html lang="pl">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+         <AuthProvider>
+         <NotificationProvider>
+            <LoadingProvider>{children}</LoadingProvider>
+          </NotificationProvider>
+         </AuthProvider>
       </body>
     </html>
   );

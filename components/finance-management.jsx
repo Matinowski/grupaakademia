@@ -1,27 +1,35 @@
 "use client"
 
-import { useState } from "react"
-import { CreditCard, DollarSign, ArrowUp, ArrowDown, Filter, Download, Plus } from "lucide-react"
+import { useState, useEffect } from "react"
+import { CreditCard, DollarSign, ArrowUp, ArrowDown, Filter, Download, Plus, Trash2 } from "lucide-react"
+import { useNotification } from "@/hooks/use-notification"
+import { LoadingProvider, useLoadingScreen, LoadingIndicator } from "@/components/loader/loading-screen"
 
-export default function FinanceManagement({ transactions, onAddTransaction }) {
+  function FinanceManagement({}) {
   const [period, setPeriod] = useState("month")
   const [filter, setFilter] = useState("all")
+  const [transactions, setTransactions] = useState([])
   const [showAddForm, setShowAddForm] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
   const [newTransaction, setNewTransaction] = useState({
-    date: new Date().toISOString().split("T")[0],
+    payment_date: new Date().toISOString().split("T")[0],
     type: "income",
     category: "lesson",
     amount: "",
     description: "",
-    paymentMethod: "cash",
+    payment_method: "cash",
   })
+  const notification = useNotification()
+
+
+  const { showLoading, updateLoading, hideLoading } = useLoadingScreen()
 
   // Oblicz statystyki podsumowujące
   const calculateSummary = () => {
     const filteredTransactions = transactions.filter((transaction) => {
       if (filter !== "all" && transaction.type !== filter) return false
 
-      const transactionDate = new Date(transaction.date)
+      const transactionDate = new Date(transaction.payment_date)
       const today = new Date()
 
       if (period === "month") {
@@ -53,13 +61,33 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
 
   const summary = calculateSummary()
 
+  useEffect(() => {
+    const fetchPayments = async () => {
+      showLoading("Ładowanie płatności...", 10)
+      try {
+        const res = await fetch("/api/payments")
+        const data = await res.json()
+        setTransactions(data)
+        updateLoading("Płatności załadowane", 100)
+        notification.success("Sukces", "Pobrano transakcje")
+        setIsLoading(false)
+        hideLoading()
+
+      } catch (err) {
+        notification.error("Błąd", "Nie udało się pobrać transakcji")
+      }
+    }
+
+    fetchPayments()
+  }, [])
+
   // Pobierz transakcje do wyświetlenia
   const getFilteredTransactions = () => {
     return transactions
       .filter((transaction) => {
         if (filter !== "all" && transaction.type !== filter) return false
 
-        const transactionDate = new Date(transaction.date)
+        const transactionDate = new Date(transaction.payment_date)
         const today = new Date()
 
         if (period === "month") {
@@ -87,22 +115,64 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
     })
   }
 
+  const onAddTransaction = async (transactionData) => {
+    try {
+      const res = await fetch("/api/payments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(transactionData),
+      })
+
+      if (!res.ok) throw new Error("Błąd API")
+
+      const newPayment = await res.json()
+      setTransactions((prev) => [...prev, newPayment])
+      notification.success("Dodano", "Transakcja zapisana w Supabase")
+    } catch (err) {
+      console.error("Error adding transaction:", err)
+      notification.error("Błąd", "Nie udało się zapisać transakcji")
+    }
+  }
+
   const handleAddTransaction = (e) => {
     e.preventDefault()
     onAddTransaction({
       ...newTransaction,
-      id: Date.now(),
       amount: Number(newTransaction.amount),
     })
     setNewTransaction({
-      date: new Date().toISOString().split("T")[0],
+      payment_date: new Date().toISOString().split("T")[0],
       type: "income",
       category: "lesson",
       amount: "",
       description: "",
-      paymentMethod: "cash",
+      payment_method: "cash",
     })
     setShowAddForm(false)
+  }
+
+  // Funkcja do usuwania transakcji
+  const handleDeleteTransaction = async (id) => {
+    if (!confirm("Czy na pewno chcesz usunąć tę transakcję?")) {
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/payments/`, {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      })
+
+      if (!res.ok) throw new Error("Błąd API")
+
+      // Usuń transakcję z lokalnego stanu
+      setTransactions((prev) => prev.filter((transaction) => transaction.id !== id))
+      notification.success("Usunięto", "Transakcja została usunięta")
+    } catch (err) {
+      console.error("Error deleting transaction:", err)
+      notification.error("Błąd", "Nie udało się usunąć transakcji")
+    }
   }
 
   const getCategoryLabel = (category) => {
@@ -215,8 +285,8 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Data</label>
                 <input
                   type="date"
-                  name="date"
-                  value={newTransaction.date}
+                  name="payment_date"
+                  value={newTransaction.payment_date}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -263,10 +333,7 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                 >
                   {newTransaction.type === "income" ? (
                     <>
-                      <option value="lesson">Lekcja jazdy</option>
-                      <option value="exam">Egzamin na prawo jazdy</option>
-                      <option value="theory">Zajęcia teoretyczne</option>
-                      <option value="other">Inny przychód</option>
+                      <option value="Inne">Inny przychód</option>
                     </>
                   ) : (
                     <>
@@ -283,8 +350,8 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Metoda płatności</label>
                 <select
-                  name="paymentMethod"
-                  value={newTransaction.paymentMethod}
+                  name="payment_method"
+                  value={newTransaction.payment_method}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   required
@@ -329,9 +396,12 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
       )}
 
       {/* Tabela transakcji */}
+      {isLoading ? (
+              <LoadingIndicator className=" mt-20" />
+            ) : (
       <div className="bg-white rounded-lg shadow flex-1 overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
+          <table className="min-w-full divide-y divide-gray-200 ">
             <thead className="bg-gray-50">
               <tr>
                 <th
@@ -364,24 +434,30 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                 >
                   Kwota
                 </th>
+                <th
+                  scope="col"
+                  className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                >
+                  Akcje
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {getFilteredTransactions().map((transaction) => (
                 <tr key={transaction.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(transaction.date).toLocaleDateString()}
+                    {new Date(transaction.payment_date).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{transaction.description}</td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {getCategoryLabel(transaction.category)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">
-                    {transaction.paymentMethod === "cash"
+                    {transaction.payment_method === "cash"
                       ? "Gotówka"
-                      : transaction.paymentMethod === "card"
+                      : transaction.payment_method === "card"
                         ? "Karta"
-                        : transaction.paymentMethod === "transfer"
+                        : transaction.payment_method === "transfer"
                           ? "Przelew"
                           : "Inna"}
                   </td>
@@ -392,12 +468,21 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
                   >
                     {transaction.type === "income" ? "+" : "-"}${transaction.amount.toFixed(2)}
                   </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 text-right">
+                    <button
+                      onClick={() => handleDeleteTransaction(transaction.id)}
+                      className="text-red-600 hover:text-red-900 focus:outline-none"
+                      title="Usuń transakcję"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
 
               {getFilteredTransactions().length === 0 && (
                 <tr>
-                  <td colSpan="5" className="px-6 py-4 text-center text-sm text-gray-500">
+                  <td colSpan="6" className="px-6 py-4 text-center text-sm text-gray-500">
                     Nie znaleziono transakcji dla wybranego okresu.
                   </td>
                 </tr>
@@ -406,7 +491,17 @@ export default function FinanceManagement({ transactions, onAddTransaction }) {
           </table>
         </div>
       </div>
+      )}
     </div>
   )
 }
 
+
+
+export default function FinanceManagementPage() {
+  return (
+    <LoadingProvider>
+      <FinanceManagement />
+    </LoadingProvider>
+  )
+}

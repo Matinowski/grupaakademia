@@ -14,15 +14,16 @@ import {
   User,
   Users,
   Building,
-  MoreHorizontal,
   RefreshCw,
 } from "lucide-react"
+import { LoadingProvider, useLoadingScreen, LoadingIndicator } from "@/components/loader/loading-screen"
+import { useNotification } from "@/hooks/use-notification"
 
 // Role użytkowników
 const USER_ROLES = {
-  OFFICE: "pracownik_biura",
+  OFFICE: "biuro",
   INSTRUCTOR: "instruktor",
-  ADMIN: "administrator",
+  ADMIN: "admin",
 }
 
 // Status użytkowników
@@ -31,7 +32,10 @@ const USER_STATUS = {
   INACTIVE: "inactive",
 }
 
-export default function UserManagement() {
+// Kategorie prawa jazdy
+const LICENSE_CATEGORIES = ["A", "A1", "A2", "AM", "B", "B1", "C", "C1", "D", "D1", "BE", "CE", "C1E", "DE", "D1E", "T"]
+
+function UserManagementContent() {
   const [users, setUsers] = useState([])
   const [filteredUsers, setFilteredUsers] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -42,111 +46,61 @@ export default function UserManagement() {
   const [branchFilter, setBranchFilter] = useState("all")
   const [showFilters, setShowFilters] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const { showLoading, updateLoading, hideLoading } = useLoadingScreen()
 
   const [newUser, setNewUser] = useState({
-    firstName: "",
-    lastName: "",
+    name: "",
+    surname: "",
     email: "",
     phone: "",
     role: USER_ROLES.OFFICE,
     branch: "",
     status: USER_STATUS.ACTIVE,
-    password: "",
-    confirmPassword: "",
+    licenseCategory: "",
   })
 
   // Lista placówek
   const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia"]
+  const notification = useNotification()
 
   // Przykładowe dane użytkowników
   useEffect(() => {
     loadUsers()
   }, [])
 
-  const loadUsers = () => {
+  const loadUsers = async () => {
     setIsLoading(true)
+    showLoading("Ładowanie użytkowników...", 10)
 
     // Symulacja ładowania danych z API
-    setTimeout(() => {
-      const sampleUsers = [
-        {
-          id: "1",
-          firstName: "Jan",
-          lastName: "Kowalski",
-          email: "jan.kowalski@akademia.pl",
-          phone: "601-234-567",
-          role: USER_ROLES.ADMIN,
-          branch: "Widzew",
-          status: USER_STATUS.ACTIVE,
-          lastLogin: "2025-04-17T08:30:00Z",
-          createdAt: "2024-01-15T10:00:00Z",
-        },
-        {
-          id: "2",
-          firstName: "Anna",
-          lastName: "Nowak",
-          email: "anna.nowak@akademia.pl",
-          phone: "602-345-678",
-          role: USER_ROLES.INSTRUCTOR,
-          branch: "Bałuty",
-          status: USER_STATUS.ACTIVE,
-          lastLogin: "2025-04-18T09:15:00Z",
-          createdAt: "2024-02-10T11:30:00Z",
-        },
-        {
-          id: "3",
-          firstName: "Piotr",
-          lastName: "Wiśniewski",
-          email: "piotr.wisniewski@akademia.pl",
-          phone: "603-456-789",
-          role: USER_ROLES.OFFICE,
-          branch: "Zgierz",
-          status: USER_STATUS.ACTIVE,
-          lastLogin: "2025-04-16T14:45:00Z",
-          createdAt: "2024-03-05T09:00:00Z",
-        },
-        {
-          id: "4",
-          firstName: "Magdalena",
-          lastName: "Lewandowska",
-          email: "magdalena.lewandowska@akademia.pl",
-          phone: "604-567-890",
-          role: USER_ROLES.INSTRUCTOR,
-          branch: "Górna",
-          status: USER_STATUS.INACTIVE,
-          lastLogin: "2025-03-30T10:20:00Z",
-          createdAt: "2024-01-20T13:15:00Z",
-        },
-        {
-          id: "5",
-          firstName: "Tomasz",
-          lastName: "Kamiński",
-          email: "tomasz.kaminski@akademia.pl",
-          phone: "605-678-901",
-          role: USER_ROLES.OFFICE,
-          branch: "Dąbrowa",
-          status: USER_STATUS.ACTIVE,
-          lastLogin: "2025-04-18T11:10:00Z",
-          createdAt: "2024-02-25T08:45:00Z",
-        },
-        {
-          id: "6",
-          firstName: "Karolina",
-          lastName: "Zielińska",
-          email: "karolina.zielinska@akademia.pl",
-          phone: "606-789-012",
-          role: USER_ROLES.INSTRUCTOR,
-          branch: "Retkinia",
-          status: USER_STATUS.ACTIVE,
-          lastLogin: "2025-04-17T15:30:00Z",
-          createdAt: "2024-03-15T10:30:00Z",
-        },
-      ]
+    const fetchUsers = async () => {
+      try {
+        updateLoading("Pobieranie danych...", 30)
 
-      setUsers(sampleUsers)
-      setFilteredUsers(sampleUsers)
-      setIsLoading(false)
-    }, 500)
+        const response = await fetch("/api/users/admin/getallusers")
+        updateLoading("Przetwarzanie danych...", 70)
+
+        const data = await response.json()
+        console.log("Dane użytkowników:", data)
+
+        if (response.ok) {
+          updateLoading("Finalizowanie...", 90)
+          setUsers(data.user)
+          setFilteredUsers(data.user)
+        } else {
+          console.error("Błąd podczas ładowania użytkowników:", data.error)
+        }
+      } catch (error) {
+        console.error("Błąd podczas ładowania użytkowników:", error)
+      } finally {
+        setTimeout(() => {
+          hideLoading()
+          setIsLoading(false)
+        }, 500)
+      }
+    }
+    await fetchUsers()
+    console.log("Użytkownicy:", users)
   }
 
   // Filtrowanie użytkowników
@@ -157,7 +111,7 @@ export default function UserManagement() {
     if (searchQuery) {
       filtered = filtered.filter(
         (user) =>
-          `${user.firstName} ${user.lastName}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          `${user.name} ${user.surname}`.toLowerCase().includes(searchQuery.toLowerCase()) ||
           user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
           user.phone.includes(searchQuery),
       )
@@ -182,35 +136,41 @@ export default function UserManagement() {
   }, [users, searchQuery, roleFilter, statusFilter, branchFilter])
 
   // Dodawanie nowego użytkownika
-  const handleAddUser = (e) => {
+  const handleAddUser = async (e) => {
     e.preventDefault()
 
-    if (newUser.password !== newUser.confirmPassword) {
-      alert("Hasła nie są identyczne!")
-      return
+    try {
+      const response = await fetch("/api/users/admin/adduser", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: newUser.email,
+          name: newUser.name,
+          surname: newUser.surname,
+          phone: newUser.phone,
+          role: newUser.role,
+          branch: newUser.branch,
+          status: newUser.status,
+          licenseCategory: newUser.role === USER_ROLES.INSTRUCTOR ? newUser.licenseCategory : null,
+        }),
+      })
+      notification.success("Użytkownik został dodany")
+      const result = await response.json()
+      alert(`Tymczasowe hasło: ${result.tempPassword}`)
+    } catch (error) {
+      console.error("Błąd podczas dodawania użytkownika:", error)
     }
 
-    const newUserWithId = {
-      ...newUser,
-      id: Date.now().toString(),
-      createdAt: new Date().toISOString(),
-      lastLogin: null,
-    }
-
-    // Usuwamy potwierdzenie hasła przed zapisaniem
-    delete newUserWithId.confirmPassword
-
-    setUsers([...users, newUserWithId])
+    setUsers([...users, newUser])
     setNewUser({
-      firstName: "",
-      lastName: "",
+      name: "",
+      surname: "",
       email: "",
       phone: "",
       role: USER_ROLES.OFFICE,
       branch: "",
       status: USER_STATUS.ACTIVE,
-      password: "",
-      confirmPassword: "",
+      licenseCategory: "",
     })
     setShowAddForm(false)
   }
@@ -219,18 +179,18 @@ export default function UserManagement() {
   const handleUpdateUser = (e) => {
     e.preventDefault()
 
-    if (editingUser.password && editingUser.password !== editingUser.confirmPassword) {
-      alert("Hasła nie są identyczne!")
-      return
-    }
-
     const updatedUser = { ...editingUser }
-
-    // Jeśli nie zmieniamy hasła, usuwamy pola związane z hasłem
-    if (!updatedUser.password) {
-      delete updatedUser.password
+    try {
+      fetch("/api/users/admin/edituser", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedUser),
+      })
+      notification.success("Użytkownik został zaktualizowany")
+    } catch (error) {
+      console.error("Błąd podczas aktualizacji użytkownika:", error)
+      notification.error("Błąd podczas aktualizacji użytkownika")
     }
-    delete updatedUser.confirmPassword
 
     const updatedUsers = users.map((user) => (user.id === updatedUser.id ? updatedUser : user))
     setUsers(updatedUsers)
@@ -241,6 +201,17 @@ export default function UserManagement() {
   const handleDeleteUser = (userId) => {
     if (window.confirm("Czy na pewno chcesz usunąć tego użytkownika?")) {
       const updatedUsers = users.filter((user) => user.id !== userId)
+      try {
+        fetch(`/api/users/admin/deleteuser`, {
+          method: "DELETE",
+          body: JSON.stringify({ id: userId }),
+        })
+
+        notification.success("Użytkownik został usunięty")
+      } catch (error) {
+        console.error("Błąd podczas usuwania użytkownika:", error)
+        notification.error("Błąd podczas usuwania użytkownika")
+      }
       setUsers(updatedUsers)
     }
   }
@@ -324,8 +295,37 @@ export default function UserManagement() {
     }
   }
 
+  // Resetowanie hasła użytkownika
+  const handleResetPassword = async (userId) => {
+    try {
+      showLoading("Resetowanie hasła...", 30)
+
+      const response = await fetch("/api/users/admin/resetpassword", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id: userId }),
+      })
+
+      const result = await response.json()
+
+      if (response.ok) {
+        notification.success("Hasło zostało zresetowane")
+        if (result.tempPassword) {
+          alert(`Tymczasowe hasło: ${result.tempPassword}`)
+        }
+      } else {
+        notification.error(result.error || "Błąd podczas resetowania hasła")
+      }
+    } catch (error) {
+      console.error("Błąd podczas resetowania hasła:", error)
+      notification.error("Wystąpił błąd podczas resetowania hasła")
+    } finally {
+      hideLoading()
+    }
+  }
+
   return (
-    <div className="bg-gray-50 min-h-screen p-6">
+    <div className="bg-gray-50 min-h-screen p-6 overflow-y-scroll">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Zarządzanie Użytkownikami</h1>
@@ -435,11 +435,11 @@ export default function UserManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Imię</label>
                   <input
                     type="text"
-                    value={editingUser ? editingUser.firstName : newUser.firstName}
+                    value={editingUser ? editingUser.name : newUser.name}
                     onChange={(e) =>
                       editingUser
-                        ? setEditingUser({ ...editingUser, firstName: e.target.value })
-                        : setNewUser({ ...newUser, firstName: e.target.value })
+                        ? setEditingUser({ ...editingUser, name: e.target.value })
+                        : setNewUser({ ...newUser, name: e.target.value })
                     }
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -449,11 +449,11 @@ export default function UserManagement() {
                   <label className="block text-sm font-medium text-gray-700 mb-1">Nazwisko</label>
                   <input
                     type="text"
-                    value={editingUser ? editingUser.lastName : newUser.lastName}
+                    value={editingUser ? editingUser.surname : newUser.surname}
                     onChange={(e) =>
                       editingUser
-                        ? setEditingUser({ ...editingUser, lastName: e.target.value })
-                        : setNewUser({ ...newUser, lastName: e.target.value })
+                        ? setEditingUser({ ...editingUser, surname: e.target.value })
+                        : setNewUser({ ...newUser, surname: e.target.value })
                     }
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -524,6 +524,32 @@ export default function UserManagement() {
                     ))}
                   </select>
                 </div>
+                {(editingUser ? editingUser.role : newUser.role) === USER_ROLES.INSTRUCTOR && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kategoria prawa jazdy</label>
+                    <select
+                      value={editingUser ? editingUser.licenseCategory || "" : newUser.licenseCategory}
+                      onChange={(e) =>
+                        editingUser
+                          ? setEditingUser({ ...editingUser, licenseCategory: e.target.value })
+                          : setNewUser({ ...newUser, licenseCategory: e.target.value })
+                      }
+                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      required={
+                        editingUser
+                          ? editingUser.role === USER_ROLES.INSTRUCTOR
+                          : newUser.role === USER_ROLES.INSTRUCTOR
+                      }
+                    >
+                      <option value="">Wybierz kategorię</option>
+                      {LICENSE_CATEGORIES.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                   <select
@@ -538,36 +564,6 @@ export default function UserManagement() {
                     <option value={USER_STATUS.ACTIVE}>Aktywny</option>
                     <option value={USER_STATUS.INACTIVE}>Nieaktywny</option>
                   </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {editingUser ? "Nowe hasło (zostaw puste, aby nie zmieniać)" : "Hasło"}
-                  </label>
-                  <input
-                    type="password"
-                    value={editingUser ? editingUser.password || "" : newUser.password}
-                    onChange={(e) =>
-                      editingUser
-                        ? setEditingUser({ ...editingUser, password: e.target.value })
-                        : setNewUser({ ...newUser, password: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required={!editingUser}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Potwierdź hasło</label>
-                  <input
-                    type="password"
-                    value={editingUser ? editingUser.confirmPassword || "" : newUser.confirmPassword}
-                    onChange={(e) =>
-                      editingUser
-                        ? setEditingUser({ ...editingUser, confirmPassword: e.target.value })
-                        : setNewUser({ ...newUser, confirmPassword: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required={!editingUser || (editingUser && editingUser.password)}
-                  />
                 </div>
               </div>
 
@@ -594,155 +590,215 @@ export default function UserManagement() {
         )}
 
         {/* Lista użytkowników */}
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Użytkownik
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Kontakt
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Rola
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Placówka
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
-                  >
-                    Ostatnie logowanie
-                  </th>
-                  <th scope="col" className="relative px-6 py-3">
-                    <span className="sr-only">Akcje</span>
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {filteredUsers.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
-                          <span className="text-gray-600 font-medium">
-                            {user.firstName.charAt(0)}
-                            {user.lastName.charAt(0)}
-                          </span>
-                        </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">
-                            {user.firstName} {user.lastName}
-                          </div>
-                          <div className="text-sm text-gray-500">Utworzono: {formatDate(user.createdAt)}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{user.email}</div>
-                      <div className="text-sm text-gray-500">{user.phone}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">{renderRole(user.role)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.branch}</td>
-                    <td className="px-6 py-4 whitespace-nowrap">{renderStatus(user.status)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {user.lastLogin ? (
-                        <>
-                          {formatDate(user.lastLogin)}
-                          <div className="text-xs text-gray-400">{formatTime(user.lastLogin)}</div>
-                        </>
-                      ) : (
-                        "Nigdy"
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      <div className="flex justify-end items-center space-x-2">
-                        <button
-                          onClick={() => handleToggleStatus(user.id)}
-                          className={`p-1 rounded-full ${
-                            user.status === USER_STATUS.ACTIVE
-                              ? "text-red-600 hover:bg-red-100"
-                              : "text-green-600 hover:bg-green-100"
-                          }`}
-                          title={user.status === USER_STATUS.ACTIVE ? "Dezaktywuj" : "Aktywuj"}
-                        >
-                          {user.status === USER_STATUS.ACTIVE ? (
-                            <X className="w-5 h-5" />
-                          ) : (
-                            <Check className="w-5 h-5" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setEditingUser(user)}
-                          className="p-1 text-blue-600 hover:bg-blue-100 rounded-full"
-                          title="Edytuj"
-                        >
-                          <Edit className="w-5 h-5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteUser(user.id)}
-                          className="p-1 text-red-600 hover:bg-red-100 rounded-full"
-                          title="Usuń"
-                        >
-                          <Trash2 className="w-5 h-5" />
-                        </button>
-                        <div className="relative group">
-                          <button className="p-1 text-gray-500 hover:bg-gray-100 rounded-full">
-                            <MoreHorizontal className="w-5 h-5" />
-                          </button>
-                          <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg hidden group-hover:block z-10">
-                            <div className="py-1">
-                              <a
-                                href="#"
-                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  alert(`Resetowanie hasła dla ${user.firstName} ${user.lastName}`)
-                                }}
-                              >
-                                Resetuj hasło
-                              </a>
-                              <a
-                                href="#"
-                                className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                onClick={(e) => {
-                                  e.preventDefault()
-                                  alert(`Wysyłanie powiadomienia do ${user.firstName} ${user.lastName}`)
-                                }}
-                              >
-                                Wyślij powiadomienie
-                              </a>
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden relative">
+          {isLoading ? (
+            <LoadingIndicator className="absolute inset-0 z-10" size="md" />
+          ) : (
+            <>
+              {/* Desktop view - table (only visible at 1500px and above) */}
+              <div className="hidden min-[1500px]:block overflow-x-scroll">
+                <table className="min-w-full divide-y divide-gray-200 ">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Użytkownik
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Kontakt
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Rola
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Placówka
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Status
+                      </th>
+                      <th
+                        scope="col"
+                        className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        Ostatnie logowanie
+                      </th>
+                      <th scope="col" className="relative px-6 py-3">
+                        <span className="sr-only">Akcje</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredUsers.map((user) => (
+                      <tr key={user.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center">
+                              <span className="text-gray-600 font-medium">
+                                {user.name.charAt(0)}
+                                {user.surname.charAt(0)}
+                              </span>
+                            </div>
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {user.name} {user.surname}
+                              </div>
+                              <div className="text-sm text-gray-500">Utworzono: {formatDate(user.created_at)}</div>
                             </div>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{user.email}</div>
+                          <div className="text-sm text-gray-500">{user.phone}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">{renderRole(user.role)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.branch}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">{renderStatus(user.status)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.last_login ? (
+                            <>
+                              {formatDate(user.last_login)}
+                              <div className="text-xs text-gray-400">{formatTime(user.last_login)}</div>
+                            </>
+                          ) : (
+                            "Nigdy"
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <div className="flex justify-end items-center space-x-2">
+                            <button
+                              onClick={() => setEditingUser(user)}
+                              className="p-1 text-blue-600 hover:bg-blue-100 rounded-full"
+                              title="Edytuj"
+                            >
+                              <Edit className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteUser(user.id)}
+                              className="p-1 text-red-600 hover:bg-red-100 rounded-full"
+                              title="Usuń"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (
+                                  window.confirm(
+                                    `Czy na pewno chcesz zresetować hasło dla ${user.name} ${user.surname}?`,
+                                  )
+                                ) {
+                                  handleResetPassword(user.id)
+                                }
+                              }}
+                              className="p-1 text-gray-500 hover:bg-gray-100 rounded-full"
+                              title="Resetuj hasło"
+                            >
+                              <RefreshCw className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile/Tablet view - cards (visible below 1500px) */}
+              <div className="min-[1500px]:hidden">
+                {filteredUsers.map((user) => (
+                  <div key={user.id} className="border-b p-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10 bg-gray-200 rounded-full flex items-center justify-center mr-3">
+                          <span className="text-gray-600 font-medium">
+                            {user.name.charAt(0)}
+                            {user.surname.charAt(0)}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium">
+                            {user.name} {user.surname}
+                          </div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
                         </div>
                       </div>
-                    </td>
-                  </tr>
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(`Czy na pewno chcesz zresetować hasło dla ${user.name} ${user.surname}?`)
+                          ) {
+                            handleResetPassword(user.id)
+                          }
+                        }}
+                        className="p-1 text-gray-500 hover:bg-gray-100 rounded-full"
+                        title="Resetuj hasło"
+                      >
+                        <RefreshCw className="w-5 h-5" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm mb-3">
+                      <div>
+                        <div className="text-gray-500">Telefon</div>
+                        <div>{user.phone}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500">Placówka</div>
+                        <div>{user.branch}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500">Rola</div>
+                        <div>{renderRole(user.role)}</div>
+                      </div>
+                      <div>
+                        <div className="text-gray-500">Status</div>
+                        <div>{renderStatus(user.status)}</div>
+                      </div>
+                    </div>
+                    <div className="flex space-x-2 mt-3">
+                      <button
+                        onClick={() => setEditingUser(user)}
+                        className="px-3 py-1 text-xs text-blue-600 bg-blue-50 rounded-full hover:bg-blue-100"
+                      >
+                        Edytuj
+                      </button>
+
+                      <button
+                        onClick={() => handleDeleteUser(user.id)}
+                        className="px-3 py-1 text-xs text-red-600 bg-red-50 rounded-full hover:bg-red-100"
+                      >
+                        Usuń
+                      </button>
+                      <button
+                        onClick={() => {
+                          if (
+                            window.confirm(`Czy na pewno chcesz zresetować hasło dla ${user.name} ${user.surname}?`)
+                          ) {
+                            handleResetPassword(user.id)
+                          }
+                        }}
+                        className="px-3 py-1 text-xs text-orange-600 bg-orange-50 rounded-full hover:bg-orange-100"
+                      >
+                        Reset hasła
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
+              </div>
+            </>
+          )}
 
           {filteredUsers.length === 0 && (
             <div className="p-8 text-center">
@@ -763,5 +819,14 @@ export default function UserManagement() {
         </div>
       </div>
     </div>
+  )
+}
+
+// Wrapper component to provide LoadingProvider context
+export default function UserManagement() {
+  return (
+    <LoadingProvider>
+      <UserManagementContent />
+    </LoadingProvider>
   )
 }

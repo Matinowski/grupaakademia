@@ -1,22 +1,40 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Search, User, Phone, Calendar, Plus, Mail, BookOpen } from "lucide-react"
 
 export default function InstructorProfiles({ instructors, drivers, onSelectInstructor, onAddInstructor }) {
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedInstructor, setSelectedInstructor] = useState(null)
-  const [showAddInstructorForm, setShowAddInstructorForm] = useState(false)
-  const [newInstructor, setNewInstructor] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    licenseTypes: ["B"],
-    hireDate: "",
-    specialization: "",
-    bio: "",
-    status: "active",
-  })
+
+  function formatDate(dateString) {
+    const date = new Date(dateString);
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}.${month}.${year}`;
+  }
+  
+  function calculateDuration(startTime, endTime) {
+    const [startHour, startMinute] = startTime.split(":").map(Number);
+    const [endHour, endMinute] = endTime.split(":").map(Number);
+  
+    const startTotal = startHour * 60 + startMinute;
+    const endTotal = endHour * 60 + endMinute;
+  
+    const durationMinutes = endTotal - startTotal;
+    const durationHours = durationMinutes / 60;
+  
+    return durationHours.toFixed(1); // np. 1.5
+  }
+
+  useEffect(() => {
+    const insturctorId = selectedInstructor?.id
+    if (insturctorId) {
+      const selected = instructors.find((instructor) => instructor.id === insturctorId)
+      setSelectedInstructor(selected)
+    }
+  }, [instructors, selectedInstructor?.id])
 
   // Filtruj instruktorów na podstawie zapytania wyszukiwania
   const filteredInstructors = instructors.filter(
@@ -33,50 +51,13 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
     }
   }
 
-  const handleAddInstructorSubmit = (e) => {
-    e.preventDefault()
-    onAddInstructor(newInstructor)
-    setNewInstructor({
-      name: "",
-      phone: "",
-      email: "",
-      licenseTypes: ["B"],
-      hireDate: "",
-      specialization: "",
-      bio: "",
-      status: "active",
-    })
-    setShowAddInstructorForm(false)
-  }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setNewInstructor({
-      ...newInstructor,
-      [name]: value,
-    })
-  }
-
-  const handleLicenseTypeChange = (e) => {
-    const { value, checked } = e.target
-    if (checked) {
-      setNewInstructor({
-        ...newInstructor,
-        licenseTypes: [...newInstructor.licenseTypes, value],
-      })
-    } else {
-      setNewInstructor({
-        ...newInstructor,
-        licenseTypes: newInstructor.licenseTypes.filter((type) => type !== value),
-      })
-    }
-  }
 
   // Pobierz przypisanych kursantów dla instruktora
-  const getAssignedDrivers = (instructorId) => {
-    return drivers.filter((driver) => driver.instructorId === instructorId)
+  const getAssignedDrivers = (instructor_id) => {
+    return drivers.filter((driver) => driver.instructor_id === instructor_id)
   }
-
+  console.log("Selected instructor:", selectedInstructor)
   return (
     <div className="h-full flex">
       {/* Lista instruktorów */}
@@ -92,13 +73,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <button
-            className="mt-3 flex items-center justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-            onClick={() => setShowAddInstructorForm(true)}
-          >
-            <Plus className="w-4 h-4 mr-1" />
-            Dodaj Nowego Instruktora
-          </button>
+
         </div>
 
         <div className="divide-y">
@@ -109,9 +84,12 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               <div
                 key={instructor.id}
                 className={`p-4 cursor-pointer hover:bg-gray-50 ${selectedInstructor?.id === instructor.id ? "bg-blue-50" : ""}`}
-                onClick={() => handleInstructorSelect(instructor)}
+                onClick={() => {
+                  handleInstructorSelect(instructor)
+                  console.log("Selected instructor:", instructor)
+                }}
               >
-                <div className="font-medium">{instructor.name}</div>
+                <div className="font-medium">{instructor.name + " " + instructor.surname}</div>
                 <div className="text-sm text-gray-500">{instructor.phone}</div>
                 <div className="text-sm text-gray-500">{instructor.email}</div>
                 <div className="mt-1 flex items-center">
@@ -142,8 +120,8 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
           <div className="p-6">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h2 className="text-2xl font-bold text-gray-800">{selectedInstructor.name}</h2>
-                <p className="text-gray-500">Kategorie prawa jazdy: {selectedInstructor.licenseTypes.join(", ")}</p>
+                <h2 className="text-2xl font-bold text-gray-800">{selectedInstructor.name + " " + selectedInstructor.surname}</h2>
+                <p className="text-gray-500">Kategorie prawa jazdy: {selectedInstructor.instructors.category}</p>
               </div>
               <div
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -171,58 +149,40 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
                 </div>
               </div>
 
-              <div className="flex items-center">
-                <Calendar className="w-5 h-5 mr-2 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-500">Data zatrudnienia</div>
-                  <div>{selectedInstructor.hireDate}</div>
-                </div>
-              </div>
+          
 
-              <div className="flex items-center">
-                <BookOpen className="w-5 h-5 mr-2 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-500">Specjalizacja</div>
-                  <div>{selectedInstructor.specialization}</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Biografia</h3>
-              <div className="p-4 bg-gray-50 rounded-md">{selectedInstructor.bio || "Brak dostępnej biografii."}</div>
             </div>
 
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-lg font-medium">Przypisani kursanci</h3>
                 <span className="text-sm text-gray-500">
-                  {getAssignedDrivers(selectedInstructor.id).length} kursantów
+                  {selectedInstructor.drivers.length} kursantów
                 </span>
               </div>
 
-              {getAssignedDrivers(selectedInstructor.id).length > 0 ? (
+              {selectedInstructor.drivers.length > 0 ? (
                 <div className="space-y-2">
-                  {getAssignedDrivers(selectedInstructor.id).map((driver) => (
+                  {selectedInstructor.drivers.map((driver) => (
                     <div key={driver.id} className="p-3 border rounded-md flex items-center justify-between">
                       <div className="flex items-center">
                         <User className="w-5 h-5 mr-3 text-blue-500" />
                         <div>
                           <div className="font-medium">{driver.name}</div>
                           <div className="text-sm text-gray-500">
-                            Kategoria: {driver.licenseType} •
-                            {driver.remainingHours > 0
-                              ? ` ${driver.remainingHours} godzin pozostało`
+                            Kategoria: {driver.license_type} •
+                            {(driver.remaining_hours - driver.completed_hours) > 0
+                              ? ` ${(driver.remaining_hours - driver.completed_hours)} godzin pozostało`
                               : " Szkolenie ukończone"}
                           </div>
                         </div>
                       </div>
                       <div
                         className={`px-2 py-1 text-xs rounded-full ${
-                          driver.remainingHours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                          (driver.remaining_hours - driver.completed_hours) === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {driver.remainingHours === 0 ? "Ukończone" : "W trakcie"}
+                        {(driver.remaining_hours - driver.completed_hours) === 0 ? "Ukończone" : "W trakcie"}
                       </div>
                     </div>
                   ))}
@@ -235,18 +195,18 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
             </div>
 
             <div>
-              <h3 className="text-lg font-medium mb-2">Nadchodzący harmonogram</h3>
-              {selectedInstructor.upcomingLessons && selectedInstructor.upcomingLessons.length > 0 ? (
+              <h3 className="text-lg font-medium mb-2">Harmonogram</h3>
+              {selectedInstructor.events && selectedInstructor.events.length > 0 ? (
                 <div className="space-y-2">
-                  {selectedInstructor.upcomingLessons.map((lesson, index) => (
+                  {selectedInstructor.events.map((lesson, index) => (
                     <div key={index} className="p-3 border rounded-md flex items-center">
                       <Calendar className="w-5 h-5 mr-3 text-blue-500" />
                       <div>
                         <div className="font-medium">
-                          {lesson.date} o {lesson.time}
+                          {formatDate(lesson.date)} o {lesson.start_time}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {lesson.duration} godzin z {lesson.student}
+                          {calculateDuration(lesson.start_time, lesson.end_time)} godzin z {lesson.driver.name}
                         </div>
                       </div>
                     </div>
@@ -257,134 +217,9 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
               )}
             </div>
           </div>
-        ) : showAddInstructorForm ? (
-          <div className="p-6">
-            <h2 className="text-xl font-bold mb-4">Dodaj Nowego Instruktora</h2>
-            <form onSubmit={handleAddInstructorSubmit}>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Imię i Nazwisko</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={newInstructor.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
-                  <input
-                    type="text"
-                    name="phone"
-                    value={newInstructor.phone}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={newInstructor.email}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Data zatrudnienia</label>
-                  <input
-                    type="date"
-                    name="hireDate"
-                    value={newInstructor.hireDate}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Specjalizacja</label>
-                  <input
-                    type="text"
-                    name="specialization"
-                    value={newInstructor.specialization}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
-                  <select
-                    name="status"
-                    value={newInstructor.status}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="active">Aktywny</option>
-                    <option value="inactive">Nieaktywny</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie prawa jazdy</label>
-                <div className="grid grid-cols-5 gap-2">
-                  {["A", "B", "C", "D", "E"].map((type) => (
-                    <div key={type} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        id={`license-${type}`}
-                        value={type}
-                        checked={newInstructor.licenseTypes.includes(type)}
-                        onChange={handleLicenseTypeChange}
-                        className="mr-2"
-                      />
-                      <label htmlFor={`license-${type}`} className="text-sm">
-                        {type}
-                      </label>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Biografia</label>
-                <textarea
-                  name="bio"
-                  value={newInstructor.bio}
-                  onChange={handleInputChange}
-                  rows="4"
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-              </div>
-
-              <div className="flex justify-end space-x-2">
-                <button
-                  type="button"
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  onClick={() => setShowAddInstructorForm(false)}
-                >
-                  Anuluj
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                >
-                  Dodaj Instruktora
-                </button>
-              </div>
-            </form>
-          </div>
-        ) : (
+        ) 
+          
+        : (
           <div className="flex items-center justify-center h-full text-gray-500">
             Wybierz instruktora, aby zobaczyć szczegóły lub dodaj nowego instruktora.
           </div>
