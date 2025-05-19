@@ -55,5 +55,5 @@ export async function POST(req) {
   .update({ last_login: new Date() })
   .eq('id', user.id)
 
-  return Response.json({ success: true, needPasswordReset: user.needPasswordReset,  user: { id: user.id, email: user.email, name: user.name } })
+  return Response.json({ success: true, needPasswordReset: user.needPasswordReset,  user: { id: user.id, email: user.email, name: user.name, role: user.role } })
 }
