@@ -7,3 +7,5 @@ Profile kursatnow godziny tag
 scroll finanse
 
 kolor w week i day
+
+usuwanie pliku
