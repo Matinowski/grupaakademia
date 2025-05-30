@@ -16,7 +16,7 @@ export async function GET() {
         status,
         created_at,
         last_login,
-        branch,
+        branches,
         instructors (
           category,
           additional_info

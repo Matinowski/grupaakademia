@@ -66,7 +66,6 @@ export default function Sidebar({
     } else if(user && user.role === "instructor") { 
       navigationItems = [
         { id: "calendar", name: "Kalendarz", icon: Calendar },
-        { id: "drivers", name: "Profile Kursantów", icon: Users },
       ]
     } else if(user && user.role === "biuro") { 
       navigationItems = [

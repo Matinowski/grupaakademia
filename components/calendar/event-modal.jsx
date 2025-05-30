@@ -10,6 +10,7 @@ export default function EventModal({
   calendars = [],
   drivers = [],
   instructors = [],
+  selectedInstructorId = null, // Add this prop
   onClose,
   onSave,
   onDelete,
@@ -30,7 +31,6 @@ export default function EventModal({
   const [activeTab, setActiveTab] = useState("basic")
   const [showDriverSearch, setShowDriverSearch] = useState(false)
   const [showInstructorSearch, setShowInstructorSearch] = useState(false)
-
 
   // Utility function to conditionally join classNames
   function classNames(...classes) {
@@ -68,10 +68,10 @@ export default function EventModal({
         calendar_id: defaultCalendar.id,
         color: defaultCalendar.color,
         driver_id: null,
-        instructor_id: null,
+        instructor_id: selectedInstructorId, // Automatically assign selected instructor
       })
     }
-  }, [event, date, calendars])
+  }, [event, date, calendars, selectedInstructorId]) // Add selectedInstructorId to dependencies
 
   const formatDate = (date) => {
     const year = date.getFullYear()
@@ -91,7 +91,7 @@ export default function EventModal({
         color: calendar ? calendar.color : eventData.color,
         calendar_id: calendar_id,
       })
-    }  else {
+    } else {
       setEventData({
         ...eventData,
         [name]: value,
@@ -126,7 +126,7 @@ export default function EventModal({
     setEventData({
       ...eventData,
       driver_id: driver.id,
-      title: eventData.title || `Driving Lesson with ${driver.name}`,
+      title: eventData.title || `Lekcja jazdy z ${driver.name}`,
     })
     setShowDriverSearch(false)
     setSearchQuery("")
@@ -155,7 +155,6 @@ export default function EventModal({
     })
   }
 
-
   // Filter drivers based on search query
   const filteredDrivers = drivers.filter(
     (driver) =>
@@ -172,15 +171,12 @@ export default function EventModal({
       instructor.email?.toLowerCase().includes(searchQuery.toLowerCase()),
   )
 
-
-
   // Get the selected entities
   const selectedDriver = drivers.find((driver) => driver.id === eventData.driver_id)
   const selectedInstructor = instructors.find((instructor) => instructor.id === eventData.instructor_id)
 
   // Check if user has permission to edit
   const canEdit = true
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
@@ -253,8 +249,6 @@ export default function EventModal({
                   />
                 </div>
 
-
-
                 <div>
                   <label htmlFor="calendar" className="block text-sm font-medium text-gray-700">
                     Kalendarz
@@ -294,8 +288,6 @@ export default function EventModal({
                       disabled={!canEdit}
                     />
                   </div>
-
-                 
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
@@ -421,7 +413,9 @@ export default function EventModal({
                           <BookOpen className="w-4 h-4 text-indigo-600" />
                         </div>
                         <div>
-                          <div className="font-medium">{selectedInstructor.name + " " + selectedInstructor.surname}</div>
+                          <div className="font-medium">
+                            {selectedInstructor.name + " " + selectedInstructor.surname}
+                          </div>
                           <div className="text-xs text-gray-500">{selectedInstructor.phone}</div>
                         </div>
                       </div>

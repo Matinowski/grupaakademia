@@ -1,21 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import {
-  Search,
-  Plus,
-  Edit,
-  Trash2,
-  Check,
-  X,
-  Filter,
-  ChevronDown,
-  Shield,
-  User,
-  Users,
-  Building,
-  RefreshCw,
-} from "lucide-react"
+import { Search, Plus, Edit, Trash2, Check, X, Filter, ChevronDown, Shield, User, Users, Building, RefreshCw } from 'lucide-react'
 import { LoadingProvider, useLoadingScreen, LoadingIndicator } from "@/components/loader/loading-screen"
 import { useNotification } from "@/hooks/use-notification"
 
@@ -54,13 +40,13 @@ function UserManagementContent() {
     email: "",
     phone: "",
     role: USER_ROLES.OFFICE,
-    branch: "",
+    branches: [],
     status: USER_STATUS.ACTIVE,
     licenseCategory: "",
   })
 
   // Lista placówek
-  const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia"]
+  const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia", "Moto-akademia", "Zawodowa-Akademia"]
   const notification = useNotification()
 
   // Przykładowe dane użytkowników
@@ -129,7 +115,9 @@ function UserManagementContent() {
 
     // Filtrowanie po placówce
     if (branchFilter !== "all") {
-      filtered = filtered.filter((user) => user.branch === branchFilter)
+      filtered = filtered.filter((user) => 
+        user.branches && user.branches.includes(branchFilter)
+      )
     }
 
     setFilteredUsers(filtered)
@@ -149,7 +137,7 @@ function UserManagementContent() {
           surname: newUser.surname,
           phone: newUser.phone,
           role: newUser.role,
-          branch: newUser.branch,
+          branches: newUser.branches,
           status: newUser.status,
           licenseCategory: newUser.role === USER_ROLES.INSTRUCTOR ? newUser.licenseCategory : null,
         }),
@@ -168,7 +156,7 @@ function UserManagementContent() {
       email: "",
       phone: "",
       role: USER_ROLES.OFFICE,
-      branch: "",
+      branches: [],
       status: USER_STATUS.ACTIVE,
       licenseCategory: "",
     })
@@ -505,24 +493,43 @@ function UserManagementContent() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
-                  <select
-                    value={editingUser ? editingUser.branch : newUser.branch}
-                    onChange={(e) =>
-                      editingUser
-                        ? setEditingUser({ ...editingUser, branch: e.target.value })
-                        : setNewUser({ ...newUser, branch: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
-                  >
-                    <option value="">Wybierz placówkę</option>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Placówki</label>
+                  <div className="grid grid-cols-2 gap-2 max-h-32 overflow-y-auto border rounded-md p-2">
                     {branches.map((branch) => (
-                      <option key={branch} value={branch}>
-                        {branch}
-                      </option>
+                      <label key={branch} className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={editingUser 
+                            ? (editingUser.branches || []).includes(branch)
+                            : newUser.branches.includes(branch)
+                          }
+                          onChange={(e) => {
+                            const currentBranches = editingUser 
+                              ? (editingUser.branches || [])
+                              : newUser.branches;
+                            
+                            if (e.target.checked) {
+                              const newBranches = [...currentBranches, branch];
+                              if (editingUser) {
+                                setEditingUser({ ...editingUser, branches: newBranches });
+                              } else {
+                                setNewUser({ ...newUser, branches: newBranches });
+                              }
+                            } else {
+                              const newBranches = currentBranches.filter(b => b !== branch);
+                              if (editingUser) {
+                                setEditingUser({ ...editingUser, branches: newBranches });
+                              } else {
+                                setNewUser({ ...newUser, branches: newBranches });
+                              }
+                            }
+                          }}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <span className="text-sm">{branch}</span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
                 {(editingUser ? editingUser.role : newUser.role) === USER_ROLES.INSTRUCTOR && (
                   <div>
@@ -665,7 +672,12 @@ function UserManagementContent() {
                           <div className="text-sm text-gray-500">{user.phone}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{renderRole(user.role)}</td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.branch}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {user.branches && user.branches.length > 0 
+                            ? user.branches.join(", ")
+                            : "Brak przypisanych placówek"
+                          }
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">{renderStatus(user.status)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {user.last_login ? (
@@ -755,8 +767,11 @@ function UserManagementContent() {
                         <div>{user.phone}</div>
                       </div>
                       <div>
-                        <div className="text-gray-500">Placówka</div>
-                        <div>{user.branch}</div>
+                        <div className="text-gray-500">Placówki</div>
+                        <div>{user.branches && user.branches.length > 0 
+                          ? user.branches.join(", ")
+                          : "Brak przypisanych placówek"
+                        }</div>
                       </div>
                       <div>
                         <div className="text-gray-500">Rola</div>

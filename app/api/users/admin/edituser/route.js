@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase"
 
 export async function PUT(req) {
-  const { id, email, name, surname, phone, role, branch, status } = await req.json()
+  const { id, email, name, surname, phone, role, branches, status } = await req.json()
 
   const { data: user, error } = await supabaseAdmin
     .from("users")
@@ -11,7 +11,7 @@ export async function PUT(req) {
       surname,
       phone,
       role,
-      branch,
+      branches,
       status,
     })
     .eq("id", id)

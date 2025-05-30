@@ -24,7 +24,7 @@ import PaymentForm from "@/components/driverProfiels/payment-form"
 import { useAuth } from "@/hooks/use-auth"
 import PdfViewer from "@/components/ui/pdf-viewer"
 
-export default function DriverProfiles({ drivers, instructors = [], events }) {
+export default function DriverProfiles({ drivers, events }) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { user } = useAuth()
@@ -43,7 +43,6 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
     contract_date: "",
     completed_hours: 0,
     remaining_hours: 30,
-    instructor_id: "", // instructor ID
     notes: "",
     payment_type: "onetime", // onetime or installments
     paymentInstallments: [{ hours: 0, amount: 0 }],
@@ -138,7 +137,6 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
           contract_date: "",
           completed_hours: 0,
           remaining_hours: 30,
-          instructor_id: "",
           notes: "",
           payment_type: "onetime",
           paymentInstallments: [],
@@ -152,14 +150,12 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
       }
     })
   }
-  console.log(instructors[0])
   const handleEditDriverSubmit = async (e) => {
     e.preventDefault()
 
     // Add installments to the edited driver object
     const updatedDriver = {
       ...editedDriver,
-      instructor_id: editedDriver.instructor_id, // Add this line to ensure instructor_id is properly set
       paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
     }
 
@@ -319,7 +315,6 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
   const startEditMode = () => {
     setEditedDriver({
       ...selectedDriver,
-      instructor_id: selectedDriver.instructor_id, // Ensure instructor_id is properly set from instructor_id
     })
     setEditInstallments(
       selectedDriver.paymentInstallments?.length > 0
@@ -528,13 +523,6 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
                 </div>
               </div>
 
-              <div className="flex items-center">
-                <User className="w-5 h-5 mr-2 text-gray-400" />
-                <div>
-                  <div className="text-sm text-gray-500">Instruktor</div>
-                  <div>{selectedDriver.instructor || "-"}</div>
-                </div>
-              </div>
 
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
@@ -642,7 +630,6 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
                         </div>
                         <div className="text-sm text-gray-500">
                           {calculateDuration(lesson.start_time, lesson.end_time)} godzin z{" "}
-                          {lesson.instructor.name || "nieznanym instruktorem"}
                         </div>
                       </div>
                     </div>
@@ -746,22 +733,6 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Instruktor</label>
-                  <select
-                    name="instructor_id"
-                    value={editedDriver.instructor_id || ""}
-                    onChange={handleEditInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Wybierz instruktora</option>
-                    {instructors.map((instructor) => (
-                      <option key={instructor.id} value={instructor.id}>
-                        {instructor.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ukończone Godziny</label>
@@ -1053,22 +1024,7 @@ export default function DriverProfiles({ drivers, instructors = [], events }) {
                   />
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Instruktor</label>
-                  <select
-                    name="instructor_id"
-                    value={newDriver.instructor_id}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="">Wybierz instruktora</option>
-                    {instructors.map((instructor) => (
-                      <option key={instructor.id} value={instructor.id}>
-                        {instructor.name + " " + instructor.surname}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ukończone Godziny</label>

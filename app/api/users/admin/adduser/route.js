@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs"
 import crypto from "crypto"
 
 export async function POST(req) {
-  const { email, name, surname, phone, role, branch, status, licenseCategory } = await req.json()
+  const { email, name, surname, phone, role, branches, status, licenseCategory } = await req.json()
   console.log(licenseCategory)
   // Generowanie bezpiecznego tymczasowego hasła
   const tempPassword = crypto.randomBytes(12).toString("base64") // 12-13 znaków
@@ -19,13 +19,14 @@ export async function POST(req) {
       surname,
       phone,
       role,
-      branch,
+      branches,
       status,
     })
     .select("id, email, name, role")
     .single()
 
   if (error || !user) {
+    console.error("Error creating user:", error)
     return Response.json({ error: "Registration failed" }, { status: 400 })
   }
 

@@ -90,7 +90,7 @@ export default function Header({
             {view === "month" && <CalendarIcon className="w-4 h-4 mr-2" />}
             {view === "week" && <Users className="w-4 h-4 mr-2" />}
             {view === "day" && <Clock className="w-4 h-4 mr-2" />}
-            {view === "month" ? "Month" : view === "week" ? "Week" : "Day"}
+            {view === "month" ? "Miesiąc" : view === "week" ? "Tydzień" : "Dzień"}
           </button>
 
           {showViewDropdown && (
@@ -104,7 +104,7 @@ export default function Header({
                   }}
                 >
                   <CalendarIcon className="w-4 h-4 mr-2" />
-                  Month
+                  Miesiąc
                 </button>
                 <button
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -114,7 +114,7 @@ export default function Header({
                   }}
                 >
                   <Users className="w-4 h-4 mr-2" />
-                  Week
+                  Tydzień
                 </button>
                 <button
                   className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -124,7 +124,7 @@ export default function Header({
                   }}
                 >
                   <Clock className="w-4 h-4 mr-2" />
-                  Day
+                  Dzień
                 </button>
               </div>
             </div>

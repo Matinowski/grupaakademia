@@ -13,8 +13,8 @@ import {
   Trash2,
   Building,
   Calendar,
-  User,
 } from "lucide-react"
+import { useAuth } from "@/hooks/use-auth"
 
 // Statusy zadań
 const TASK_STATUSES = {
@@ -30,13 +30,18 @@ const TASK_PRIORITIES = {
   HIGH: "high",
 }
 
-
-
 export default function BranchReports({
-  branches = [
+  branches: allBranches = [
     { id: "retkinia", name: "Retkinia" },
     { id: "widzew", name: "Widzew" },
     { id: "ozorkow", name: "Ozorków" },
+    { id: "centrum", name: "Centrum" },
+    { id: "górna", name: "Górna" },
+    { id: "dabrowa", name: "Dąbrowa" },
+    { id: "bałuty", name: "Bałuty" },
+    { id: "zgierz", name: "Zgierz" },
+    { id: "motoakademia", name: "Moto-Akademia" },
+    { id: "zawodowaakademia", name: "Zawodowa-Akademia" },
   ],
 }) {
   const [reports, setReports] = useState([])
@@ -50,12 +55,16 @@ export default function BranchReports({
   const [selectedBranch, setSelectedBranch] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
 
+  const { user } = useAuth()
+
+  // Filtrowanie placówek na podstawie uprawnień użytkownika
+  const branches = user?.branches ? allBranches.filter((branch) => user.branches.includes(branch.name)) : allBranches
+
   const [newReport, setNewReport] = useState({
     title: "",
     description: "",
     status: TASK_STATUSES.NOT_STARTED,
     priority: TASK_PRIORITIES.MEDIUM,
-    due_date: "",
   })
 
   // Pobieranie raportów dla wybranej placówki
@@ -75,9 +84,9 @@ export default function BranchReports({
       const query = selectedBranch ? `?branchId=${selectedBranch}` : ""
       const res = await fetch(`/api/reports${query}`)
       const data = await res.json()
-  
+
       if (!res.ok) throw new Error(data.error || "Błąd pobierania")
-  
+
       setReports(data)
       setFilteredReports(data)
     } catch (error) {
@@ -86,7 +95,6 @@ export default function BranchReports({
       setIsLoading(false)
     }
   }
-  
 
   // Filtrowanie raportów
   useEffect(() => {
@@ -97,7 +105,7 @@ export default function BranchReports({
       filtered = filtered.filter(
         (report) =>
           report.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          report.description.toLowerCase().includes(searchQuery.toLowerCase())
+          report.description.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     }
 
@@ -117,12 +125,12 @@ export default function BranchReports({
   // Dodawanie nowego raportu
   const handleAddReport = async (e) => {
     e.preventDefault()
-  
+
     const newReportWithId = {
       ...newReport,
       branch: selectedBranch === "general" ? null : selectedBranch,
     }
-  
+
     try {
       const res = await fetch("/api/reports", {
         method: "POST",
@@ -130,9 +138,9 @@ export default function BranchReports({
         body: JSON.stringify(newReportWithId),
       })
       const data = await res.json()
-  
+
       if (!res.ok) throw new Error(data.error || "Błąd dodawania raportu")
-  
+
       setReports([...reports, data])
       setShowAddForm(false)
       setNewReport({
@@ -140,19 +148,17 @@ export default function BranchReports({
         description: "",
         status: TASK_STATUSES.NOT_STARTED,
         priority: TASK_PRIORITIES.MEDIUM,
-        due_date: "",
       })
     } catch (error) {
       console.error("Błąd podczas dodawania raportu:", error)
       alert("Nie udało się dodać raportu. Spróbuj ponownie.")
     }
   }
-  
 
   // Aktualizacja raportu
   const handleUpdateReport = async (e) => {
     e.preventDefault()
-  
+
     try {
       const res = await fetch(`/api/reports/${editingReport.id}`, {
         method: "PATCH",
@@ -160,9 +166,9 @@ export default function BranchReports({
         body: JSON.stringify(editingReport),
       })
       const data = await res.json()
-  
+
       if (!res.ok) throw new Error(data.error || "Błąd aktualizacji")
-  
+
       const updatedReports = reports.map((r) => (r.id === data.id ? data : r))
       setReports(updatedReports)
       setEditingReport(null)
@@ -171,31 +177,28 @@ export default function BranchReports({
       alert("Nie udało się zaktualizować raportu.")
     }
   }
-  
 
   // Zmiana statusu raportu
   const handleStatusChange = async (reportId, newStatus) => {
     try {
       const reportToUpdate = reports.find((r) => r.id === reportId)
       if (!reportToUpdate) return
-  
+
       const updatedReport = {
         ...reportToUpdate,
         status: newStatus,
-        ...(newStatus === TASK_STATUSES.COMPLETED
-          ? { completed_at: new Date().toISOString() }
-          : {}),
+        ...(newStatus === TASK_STATUSES.COMPLETED ? { completed_at: new Date().toISOString() } : {}),
       }
-  
+
       const res = await fetch(`/api/reports/${reportId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedReport),
       })
       const data = await res.json()
-  
+
       if (!res.ok) throw new Error(data.error || "Błąd zmiany statusu")
-  
+
       const updatedReports = reports.map((r) => (r.id === reportId ? data : r))
       setReports(updatedReports)
     } catch (error) {
@@ -203,27 +206,25 @@ export default function BranchReports({
       alert("Nie udało się zmienić statusu.")
     }
   }
-  
 
   // Usuwanie raportu
   const handleDeleteReport = async (reportId) => {
     if (!window.confirm("Czy na pewno chcesz usunąć ten raport?")) return
-  
+
     try {
       const res = await fetch(`/api/reports/${reportId}`, {
         method: "DELETE",
       })
       const data = await res.json()
-  
+
       if (!res.ok) throw new Error(data.error || "Błąd usuwania raportu")
-  
+
       setReports(reports.filter((r) => r.id !== reportId))
     } catch (error) {
       console.error("Błąd podczas usuwania raportu:", error)
       alert("Nie udało się usunąć raportu.")
     }
   }
-  
 
   // Formatowanie daty
   const formatDate = (dateString) => {
@@ -429,21 +430,7 @@ export default function BranchReports({
                         required
                       />
                     </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Termin wykonania</label>
-                      <input
-                        type="date"
-                        value={editingReport ? editingReport.due_date : newReport.due_date}
-                        onChange={(e) =>
-                          editingReport
-                            ? setEditingReport({ ...editingReport, due_date: e.target.value })
-                            : setNewReport({ ...newReport, due_date: e.target.value })
-                        }
-                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-          
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Priorytet</label>
                       <select
@@ -518,81 +505,130 @@ export default function BranchReports({
                 <div className="text-gray-500">Ładowanie raportów...</div>
               </div>
             ) : filteredReports.length > 0 ? (
-              <div className="space-y-4">
-                {filteredReports.map((report) => (
-                  <div key={report.id} className="bg-white rounded-lg shadow-sm overflow-hidden">
-                    <div className="p-5">
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            {renderStatus(report.status)}
-                            {renderPriority(report.priority)}
-                          </div>
-                          <h3 className="text-lg font-semibold mb-2">{report.title}</h3>
-                          <p className="text-gray-600 mb-4">{report.description}</p>
+              <div className="space-y-6">
+                {(() => {
+                  // Grupowanie raportów według daty utworzenia
+                  const groupedReports = filteredReports.reduce((groups, report) => {
+                    const date = new Date(report.created_at).toLocaleDateString("pl-PL", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })
+                    if (!groups[date]) {
+                      groups[date] = []
+                    }
+                    groups[date].push(report)
+                    return groups
+                  }, {})
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
-                            <div className="flex items-center">
-                              <Building className="w-4 h-4 mr-2 text-gray-400" />
-                              <span className="text-gray-500 mr-1">Placówka:</span>
-                              <span>
-                                {report.branch
-                                  ? branches.find((b) => b.id === report.branch)?.name || report.branch
-                                  : "Ogólne (wszystkie placówki)"}
-                              </span>
-                            </div>
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-2 text-gray-400" />
-                              <span className="text-gray-500 mr-1">Termin:</span>
-                              <span>{formatDate(report.due_date)}</span>
-                            </div>
-                          </div>
+                  // Sortowanie grup według dat (najnowsze na górze)
+                  const sortedGroups = Object.entries(groupedReports).sort(([dateA], [dateB]) => {
+                    const parseDateA = new Date(groupedReports[dateA][0].created_at)
+                    const parseDateB = new Date(groupedReports[dateB][0].created_at)
+                    return parseDateB - parseDateA
+                  })
+
+                  return sortedGroups.map(([date, reports]) => (
+                    <div key={date} className="space-y-4">
+                      {/* Nagłówek daty */}
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0">
+                          <h3 className="text-lg font-semibold text-gray-800 bg-gray-100 px-4 py-2 rounded-lg">
+                            {date}
+                          </h3>
                         </div>
-
-                        <div className="flex flex-col gap-2 ml-4">
-                          <button
-                            onClick={() => setEditingReport(report)}
-                            className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
-                          >
-                            <Edit className="w-5 h-5" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteReport(report.id)}
-                            className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full"
-                          >
-                            <Trash2 className="w-5 h-5" />
-                          </button>
+                        <div className="flex-grow ml-4 h-px bg-gray-200"></div>
+                        <div className="flex-shrink-0 ml-4">
+                          <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                            {reports.length}{" "}
+                            {reports.length === 1 ? "raport" : reports.length < 5 ? "raporty" : "raportów"}
+                          </span>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="bg-gray-50 px-5 py-3 flex items-center justify-between">
-                      <div className="text-sm text-gray-500">
-                        Utworzono: {formatDate(report.created_at)}
-                        {report.completedAt && <span> • Ukończono: {formatDate(report.completedAt)}</span>}
-                      </div>
-
-                      {report.status !== TASK_STATUSES.COMPLETED && (
-                        <div className="flex gap-2">
-                          {report.status === TASK_STATUSES.NOT_STARTED && (
-                            <button
-                              onClick={() => handleStatusChange(report.id, TASK_STATUSES.IN_PROGRESS)}
-                              className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                            >
-                              Rozpocznij
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleStatusChange(report.id, TASK_STATUSES.COMPLETED)}
-                            className="px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700"
+                      {/* Raporty dla danego dnia */}
+                      <div className="space-y-4 ml-4">
+                        {reports.map((report) => (
+                          <div
+                            key={report.id}
+                            className="bg-white rounded-lg shadow-sm overflow-hidden border-l-4 border-blue-200"
                           >
-                            Oznacz jako ukończone
-                          </button>
-                        </div>
-                      )}
+                            <div className="p-5">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 mb-2">
+                                    {renderStatus(report.status)}
+                                    {renderPriority(report.priority)}
+                                  </div>
+                                  <h4 className="text-lg font-semibold mb-2">{report.title}</h4>
+                                  <p className="text-gray-600 mb-4">{report.description}</p>
+
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2 text-sm">
+                                    <div className="flex items-center">
+                                      <Building className="w-4 h-4 mr-2 text-gray-400" />
+                                      <span className="text-gray-500 mr-1">Placówka:</span>
+                                      <span>
+                                        {report.branch
+                                          ? branches.find((b) => b.id === report.branch)?.name || report.branch
+                                          : "Ogólne (wszystkie placówki)"}
+                                      </span>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="flex flex-col gap-2 ml-4">
+                                  <button
+                                    onClick={() => setEditingReport(report)}
+                                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-full"
+                                  >
+                                    <Edit className="w-5 h-5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteReport(report.id)}
+                                    className="p-2 text-gray-500 hover:text-red-600 hover:bg-red-50 rounded-full"
+                                  >
+                                    <Trash2 className="w-5 h-5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="bg-gray-50 px-5 py-3 flex items-center justify-between">
+                              <div className="text-sm text-gray-500">
+                                Utworzono:{" "}
+                                {new Date(report.created_at).toLocaleTimeString("pl-PL", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                                {report.completedAt && <span> • Ukończono: {formatDate(report.completedAt)}</span>}
+                              </div>
+
+                              {report.status !== TASK_STATUSES.COMPLETED && (
+                                <div className="flex gap-2">
+                                  {report.status === TASK_STATUSES.NOT_STARTED && (
+                                    <button
+                                      onClick={() => handleStatusChange(report.id, TASK_STATUSES.IN_PROGRESS)}
+                                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                                    >
+                                      Rozpocznij
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => handleStatusChange(report.id, TASK_STATUSES.COMPLETED)}
+                                    className="px-3 py-1 text-xs bg-green-600 text-white rounded-md hover:bg-green-700"
+                                  >
+                                    Oznacz jako ukończone
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                })()}
               </div>
             ) : (
               <div className="bg-white rounded-lg shadow-sm p-8 text-center">

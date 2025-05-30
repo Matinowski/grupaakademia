@@ -16,7 +16,7 @@ export async function GET() {
       status,
       created_at,
       last_login,
-      branch,
+      branches,
       instructors (
         category,
         additional_info
@@ -62,10 +62,8 @@ export async function GET() {
       phone,
       license_type,
       remaining_hours,
-      completed_hours,
-      instructor_id
+      completed_hours
     `)
-    .in("instructor_id", instructor_ids);
 
     if (driverError || !drivers) {
       console.log(driverError)

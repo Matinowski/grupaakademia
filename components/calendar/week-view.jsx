@@ -1,468 +1,515 @@
-'use client'
+"use client"
 
-import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Clock, User, BookOpen, Car, Tag } from 'lucide-react'
+import { useState, useRef } from "react"
+import { motion } from "framer-motion"
+import { Clock, User, Car, Phone } from "lucide-react"
 
 export default function WeekView({
-	currentDate,
-	events,
-	onTimeClick,
-	onEventClick,
-	onDragEvent,
-	onDragEventTime,
-	userRole = 'admin',
+  currentDate,
+  events,
+  onTimeClick,
+  onEventClick,
+  onDragEvent,
+  onDragEventTime,
+  userRole = "admin",
 }) {
-	const [draggedEvent, setDraggedEvent] = useState(null)
-	const [dragStartY, setDragStartY] = useState(null)
-	const [hoveredEvent, setHoveredEvent] = useState(null)
-	const [showTooltip, setShowTooltip] = useState(null)
-	const timeGridRef = useRef(null)
+  const [draggedEvent, setDraggedEvent] = useState(null)
+  const [dragStartY, setDragStartY] = useState(null)
+  const [hoveredEvent, setHoveredEvent] = useState(null)
+  const timeGridRef = useRef(null)
 
-	// Utility function to conditionally join classNames
-	function classNames(...classes) {
-		return classes.filter(Boolean).join(' ')
-	}
+  // Utility function to conditionally join classNames
+  function classNames(...classes) {
+    return classes.filter(Boolean).join(" ")
+  }
 
-	// Get start of week (Sunday)
-	const getStartOfWeek = date => {
-		const startOfWeek = new Date(date)
-		startOfWeek.setDate(date.getDate() - date.getDay())
-		startOfWeek.setHours(0, 0, 0, 0)
-		return startOfWeek
-	}
+  // Get start of week (Sunday)
+  const getStartOfWeek = (date) => {
+    const startOfWeek = new Date(date)
+    startOfWeek.setDate(date.getDate() - date.getDay())
+    startOfWeek.setHours(0, 0, 0, 0)
+    return startOfWeek
+  }
 
-	// Get days of the week
-	const getDaysOfWeek = startDate => {
-		const days = []
-		for (let i = 0; i < 7; i++) {
-			const day = new Date(startDate)
-			day.setDate(startDate.getDate() + i)
-			days.push(day)
-		}
-		return days
-	}
+  // Get days of the week
+  const getDaysOfWeek = (startDate) => {
+    const days = []
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(startDate)
+      day.setDate(startDate.getDate() + i)
+      days.push(day)
+    }
+    return days
+  }
 
-	// Get hours of the day
-	const getHoursOfDay = () => {
-		const hours = []
-		for (let i = 3; i < 24; i++) {
-			hours.push(i)
-		}
-		return hours
-	}
+  // Get hours of the day
+  const getHoursOfDay = () => {
+    const hours = []
+    for (let i = 3; i < 24; i++) {
+      hours.push(i)
+    }
+    return hours
+  }
 
-	// Format time
-	const formatTime = hour => {
-		return `${hour.toString().padStart(2, '0')}:00`
-	}
+  // Format time
+  const formatTime = (hour) => {
+    return `${hour.toString().padStart(2, "0")}:00`
+  }
 
-	// Format date
-	const formatDate = date => {
-		return date.toLocaleDateString('pl-PL', { weekday: 'short', day: 'numeric' })
-	}
+  // Format date
+  const formatDate = (date) => {
+    return date.toLocaleDateString("pl-PL", { weekday: "short", day: "numeric" })
+  }
 
-	// Check if date is today
-	const isToday = date => {
-		const today = new Date()
-		return (
-			date.getDate() === today.getDate() &&
-			date.getMonth() === today.getMonth() &&
-			date.getFullYear() === today.getFullYear()
-		)
-	}
+  // Check if date is today
+  const isToday = (date) => {
+    const today = new Date()
+    return (
+      date.getDate() === today.getDate() &&
+      date.getMonth() === today.getMonth() &&
+      date.getFullYear() === today.getFullYear()
+    )
+  }
 
-	// Get events for a specific day
-	const getEventsForDay = day => {
-		return events.filter(event => {
-			const eventDate = new Date(event.date)
-			return (
-				eventDate.getDate() === day.getDate() &&
-				eventDate.getMonth() === day.getMonth() &&
-				eventDate.getFullYear() === day.getFullYear()
-			)
-		})
-	}
+  // Get events for a specific day
+  const getEventsForDay = (day) => {
+    return events.filter((event) => {
+      const eventDate = new Date(event.date)
+      return (
+        eventDate.getDate() === day.getDate() &&
+        eventDate.getMonth() === day.getMonth() &&
+        eventDate.getFullYear() === day.getFullYear()
+      )
+    })
+  }
 
-	// Calculate event layout to prevent overlaps
-	const calculateEventLayout = (events, day) => {
-		if (!events.length) return {}
+  // Google Calendar inspired layout algorithm
+  const calculateEventLayout = (events, day) => {
+    if (!events.length) return { layouts: {}, maxColumns: 0, dayWidth: 150 }
 
-		// Filter events for this day
-		const dayEvents = events.filter(event => {
-			const eventDate = new Date(event.date)
-			return (
-				eventDate.getDate() === day.getDate() &&
-				eventDate.getMonth() === day.getMonth() &&
-				eventDate.getFullYear() === day.getFullYear()
-			)
-		})
+    // Filter events for this specific day only
+    const dayEvents = events.filter((event) => {
+      const eventDate = new Date(event.date)
+      return (
+        eventDate.getDate() === day.getDate() &&
+        eventDate.getMonth() === day.getMonth() &&
+        eventDate.getFullYear() === day.getFullYear()
+      )
+    })
 
-		if (!dayEvents.length) return {}
+    if (!dayEvents.length) return { layouts: {}, maxColumns: 0, dayWidth: 150 }
 
-		// Sort events by start time
-		const sortedEvents = [...dayEvents].sort((a, b) => {
-			const aStart =
-				Number.parseInt(a.start_time.split(':')[0], 10) * 60 + Number.parseInt(a.start_time.split(':')[1], 10)
-			const bStart =
-				Number.parseInt(b.start_time.split(':')[0], 10) * 60 + Number.parseInt(b.start_time.split(':')[1], 10)
-			return aStart - bStart
-		})
+    // Convert times to minutes for easier calculation
+    const eventsWithTimes = dayEvents.map((event) => ({
+      ...event,
+      startMinutes:
+        Number.parseInt(event.start_time.split(":")[0], 10) * 60 + Number.parseInt(event.start_time.split(":")[1], 10),
+      endMinutes:
+        Number.parseInt(event.end_time.split(":")[0], 10) * 60 + Number.parseInt(event.end_time.split(":")[1], 10),
+    }))
 
-		// Group overlapping events
-		const groups = []
-		let currentGroup = [sortedEvents[0]]
+    // Sort by start time, then by duration (longer first)
+    eventsWithTimes.sort((a, b) => {
+      if (a.startMinutes !== b.startMinutes) {
+        return a.startMinutes - b.startMinutes
+      }
+      return b.endMinutes - b.startMinutes - (a.endMinutes - a.startMinutes)
+    })
 
-		for (let i = 1; i < sortedEvents.length; i++) {
-			const event = sortedEvents[i]
-			const eventStart =
-				Number.parseInt(event.start_time.split(':')[0], 10) * 60 + Number.parseInt(event.start_time.split(':')[1], 10)
+    // Assign columns using Google Calendar approach
+    const columns = []
+    const eventLayouts = {}
 
-			// Check if this event overlaps with any event in the current group
-			let overlaps = false
-			for (const groupEvent of currentGroup) {
-				const groupEventEnd =
-					Number.parseInt(groupEvent.end_time.split(':')[0], 10) * 60 +
-					Number.parseInt(groupEvent.end_time.split(':')[1], 10)
-				if (eventStart < groupEventEnd) {
-					overlaps = true
-					break
-				}
-			}
+    eventsWithTimes.forEach((event) => {
+      // Find the leftmost column where this event can fit
+      let columnIndex = 0
 
-			if (overlaps) {
-				currentGroup.push(event)
-			} else {
-				groups.push([...currentGroup])
-				currentGroup = [event]
-			}
-		}
+      while (columnIndex < columns.length) {
+        const column = columns[columnIndex]
+        let canFit = true
 
-		groups.push(currentGroup)
+        // Check if this event overlaps with any event in this column
+        for (const existingEvent of column) {
+          if (event.startMinutes < existingEvent.endMinutes && event.endMinutes > existingEvent.startMinutes) {
+            canFit = false
+            break
+          }
+        }
 
-		// Calculate position for each event
-		const eventLayout = {}
+        if (canFit) break
+        columnIndex++
+      }
 
-		groups.forEach(group => {
-			const groupSize = group.length
+      // If no existing column works, create a new one
+      if (columnIndex === columns.length) {
+        columns.push([])
+      }
 
-			group.forEach((event, index) => {
-				eventLayout[event.id] = {
-					width: groupSize > 1 ? `calc(${100 / groupSize}% - 4px)` : 'calc(100% - 4px)',
-					left: groupSize > 1 ? `calc(${(100 / groupSize) * index}% + 2px)` : '2px',
-					zIndex: 10 + index, // Higher index events appear on top
-				}
-			})
-		})
+      columns[columnIndex].push(event)
 
-		return eventLayout
-	}
+      eventLayouts[event.id] = {
+        column: columnIndex,
+        totalColumns: columns.length,
+      }
+    })
 
-	// Get event position and height
-	const getEventStyle = event => {
-		const eventStartHour = Number.parseInt(event.start_time.split(':')[0], 10)
-		const eventStartMinute = Number.parseInt(event.start_time.split(':')[1], 10)
-		const eventEndHour = Number.parseInt(event.end_time.split(':')[0], 10)
-		const eventEndMinute = Number.parseInt(event.end_time.split(':')[1], 10)
+    const maxColumns = columns.length
+    const eventWidth = 140 // Fixed width per event for readability
+    const eventGap = 4 // Gap between events
+    const dayWidth = Math.max(maxColumns * (eventWidth + eventGap), 150) // Minimum day width
 
-		const startPosition = (eventStartHour - 3) * 60 + eventStartMinute
-		const duration = (eventEndHour - eventStartHour) * 60 + (eventEndMinute - eventStartMinute)
+    // Calculate final positions with fixed widths
+    Object.keys(eventLayouts).forEach((eventId) => {
+      const event = eventsWithTimes.find((e) => e.id === eventId)
+      const layout = eventLayouts[eventId]
 
-		return {
-			top: `${startPosition}px`,
-			height: `${duration}px`,
-			backgroundColor: getEventTypeColor(event),
-		}
-	}
+      // Calculate how many columns this event can span
+      let rightmostColumn = layout.column
 
-	const getEventTypeColor = event => {
-		const createdAt = new Date(event.created_at)
-		const hour = createdAt.getHours()
-		console.log(createdAt)
-		console.log(event, hour)
+      for (let col = layout.column + 1; col < maxColumns; col++) {
+        const column = columns[col]
+        let canExpand = true
 
-		if (hour >= 14) {
-			return '#FBBF24' // amber
-		} else if (event.payment_due) {
-			return '#FF0000' // Red for payment due
-		} else {
-			switch (event.lessonType) {
-				case 'practical':
-					return '#10B981' // green
-				case 'theory':
-					return '#6366F1' // indigo
-				case 'exam':
-					return '#F43F5E' // rose
-				default:
-					return event.color || '#4285F4' // blue
-			}
-		}
-	}
+        for (const existingEvent of column) {
+          if (event.startMinutes < existingEvent.endMinutes && event.endMinutes > existingEvent.startMinutes) {
+            canExpand = false
+            break
+          }
+        }
 
-	// Get event details
-	const getEventDetails = event => {
-		const details = []
+        if (!canExpand) break
+        rightmostColumn = col
+      }
 
-		if (event.start_time) {
-			details.push(event.start_time)
-		}
+      const columnsSpanned = rightmostColumn - layout.column + 1
+      const width = columnsSpanned * eventWidth + (columnsSpanned - 1) * eventGap
+      const left = layout.column * (eventWidth + eventGap)
 
-		if (event.driver_id) {
-			const driver = event.driver || { name: 'Kursant' }
-			details.push(driver.name)
-		}
+      eventLayouts[eventId] = {
+        ...layout,
+        width: `${width}px`,
+        left: `${left}px`,
+        totalColumns: maxColumns,
+        columnsSpanned,
+      }
+    })
 
-		if (event.instructor_id) {
-			const instructor = event.instructor || { name: 'Instruktor' }
-			if (userRole !== 'instructor') {
-				details.push(instructor.name)
-			}
-		}
+    return { layouts: eventLayouts, maxColumns, dayWidth }
+  }
 
-		if (details.length > 0) {
-			return details.join(' • ')
-		}
+  // Get event position and height
+  const getEventStyle = (event, layout) => {
+    const eventStartHour = Number.parseInt(event.start_time.split(":")[0], 10)
+    const eventStartMinute = Number.parseInt(event.start_time.split(":")[1], 10)
+    const eventEndHour = Number.parseInt(event.end_time.split(":")[0], 10)
+    const eventEndMinute = Number.parseInt(event.end_time.split(":")[1], 10)
 
-		return ''
-	}
+    const startPosition = (eventStartHour - 3) * 60 + eventStartMinute
+    const duration = (eventEndHour - eventStartHour) * 60 + (eventEndMinute - eventStartMinute)
 
-	// Get start of week and days of week
-	const startOfWeek = getStartOfWeek(currentDate)
-	const daysOfWeek = getDaysOfWeek(startOfWeek)
-	const hoursOfDay = getHoursOfDay()
+    // Expand height on hover for short events
+    const isHovered = hoveredEvent === event.id
+    const minHeight = isHovered && duration < 80 ? 120 : Math.max(duration, 30)
 
-	// Calculate event layouts for each day
-	const eventLayouts = {}
-	daysOfWeek.forEach(day => {
-		eventLayouts[day.toISOString()] = calculateEventLayout(events, day)
-	})
+    return {
+      top: `${startPosition}px`,
+      height: `${minHeight}px`,
+      backgroundColor: getEventTypeColor(event),
+      transform: isHovered ? "scale(1.02)" : "scale(1)",
+      zIndex: isHovered ? 1000 : "auto",
+      transition: "all 0.2s ease-in-out",
+    }
+  }
 
-	// Enhanced drag and drop handlers
-	const handleDragStart = (e, event) => {
-		e.stopPropagation()
-		setDraggedEvent(event)
+  const getEventTypeColor = (event) => {
+    const createdAt = new Date(event.created_at)
+    const hour = createdAt.getHours()
 
-		// Calculate drag start position
-		const rect = e.currentTarget.getBoundingClientRect()
-		setDragStartY(e.clientY - rect.top)
+    if (hour >= 14) {
+      return "#FBBF24" // amber
+    } else if (event.payment_due) {
+      return "#FF0000" // Red for payment due
+    } else {
+      switch (event.lessonType) {
+        case "practical":
+          return "#10B981" // green
+        case "theory":
+          return "#6366F1" // indigo
+        case "exam":
+          return "#F43F5E" // rose
+        default:
+          return event.color || "#4285F4" // blue
+      }
+    }
+  }
 
-		// Set the drag image to be transparent
-		const dragImage = document.createElement('div')
-		dragImage.style.opacity = '0'
-		document.body.appendChild(dragImage)
-		e.dataTransfer.setDragImage(dragImage, 0, 0)
+  // Get comprehensive event info for display
+  const getEventDisplayInfo = (event) => {
+    const info = {
+      time: event.start_time,
+      studentName: event.driver?.name || "Brak danych",
+      category: event.driver?.license_category || "B",
+      phone: event.driver?.phone || "Brak tel.",
+      instructor: event.instructor?.name || "Brak instruktora",
+    }
+    return info
+  }
 
-		// Clean up the drag image element after a short delay
-		setTimeout(() => {
-			document.body.removeChild(dragImage)
-		}, 0)
-	}
+  // Get start of week and days of week
+  const startOfWeek = getStartOfWeek(currentDate)
+  const daysOfWeek = getDaysOfWeek(startOfWeek)
+  const hoursOfDay = getHoursOfDay()
 
-	const handleDragOver = (e, day) => {
-		e.preventDefault()
-		e.dataTransfer.dropEffect = 'move'
-	}
+  // Calculate event layouts for each day
+  const dayLayouts = {}
+  daysOfWeek.forEach((day) => {
+    dayLayouts[day.toISOString()] = calculateEventLayout(events, day)
+  })
 
-	const handleDrop = (e, day, dayIndex) => {
-		e.preventDefault()
-		if (draggedEvent) {
-			// Calculate new time based on drop position
-			const dayColumnRect = e.currentTarget.getBoundingClientRect()
-			const relativeY = e.clientY - dayColumnRect.top + e.currentTarget.scrollTop
+  // Enhanced drag and drop handlers
+  const handleDragStart = (e, event) => {
+    e.stopPropagation()
+    setDraggedEvent(event)
 
-			// Calculate hour and minute from pixel position
-			const totalMinutes = Math.floor(relativeY)
-			const newHour = Math.floor(totalMinutes / 60) + 3 // 3 is the start hour
-			const newMinute = totalMinutes % 60
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDragStartY(e.clientY - rect.top)
 
-			// Format new times
-			const newstart_time = `${newHour.toString().padStart(2, '0')}:${newMinute.toString().padStart(2, '0')}`
+    const dragImage = document.createElement("div")
+    dragImage.style.opacity = "0"
+    document.body.appendChild(dragImage)
+    e.dataTransfer.setDragImage(dragImage, 0, 0)
 
-			// Calculate event duration in minutes
-			const startHour = Number.parseInt(draggedEvent.start_time.split(':')[0], 10)
-			const startMinute = Number.parseInt(draggedEvent.start_time.split(':')[1], 10)
-			const endHour = Number.parseInt(draggedEvent.end_time.split(':')[0], 10)
-			const endMinute = Number.parseInt(draggedEvent.end_time.split(':')[1], 10)
-			const durationMinutes = (endHour - startHour) * 60 + (endMinute - startMinute)
+    setTimeout(() => {
+      document.body.removeChild(dragImage)
+    }, 0)
+  }
 
-			// Calculate new end time
-			const endTotalMinutes = totalMinutes + durationMinutes
-			const newEndHour = Math.floor(endTotalMinutes / 60) + 3
-			const newEndMinute = endTotalMinutes % 60
-			const newend_time = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`
+  const handleDragOver = (e, day) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = "move"
+  }
 
-			// Check if we're moving to a different day
-			const oldDate = new Date(draggedEvent.date)
-			const sameDay =
-				oldDate.getDate() === day.getDate() &&
-				oldDate.getMonth() === day.getMonth() &&
-				oldDate.getFullYear() === day.getFullYear()
+  const handleDrop = (e, day, dayIndex) => {
+    e.preventDefault()
+    if (draggedEvent) {
+      const dayColumnRect = e.currentTarget.getBoundingClientRect()
+      const relativeY = e.clientY - dayColumnRect.top + e.currentTarget.scrollTop
 
-			// If same day, just update the time
-			if (sameDay) {
-				onDragEventTime(draggedEvent.id, newstart_time, newend_time)
-			} else {
-				// If different day, update both date and time
-				const newDate = new Date(day)
-				newDate.setHours(newHour, newMinute, 0, 0)
-				onDragEvent(draggedEvent.id, newDate)
-				onDragEventTime(draggedEvent.id, newstart_time, newend_time)
-			}
+      const totalMinutes = Math.floor(relativeY)
+      const newHour = Math.floor(totalMinutes / 60) + 3
+      const newMinute = totalMinutes % 60
 
-			setDraggedEvent(null)
-			setDragStartY(null)
-		}
-	}
+      const newstart_time = `${newHour.toString().padStart(2, "0")}:${newMinute.toString().padStart(2, "0")}`
 
-	const handleDragEnd = () => {
-		setDraggedEvent(null)
-		setDragStartY(null)
-	}
+      const startHour = Number.parseInt(draggedEvent.start_time.split(":")[0], 10)
+      const startMinute = Number.parseInt(draggedEvent.start_time.split(":")[1], 10)
+      const endHour = Number.parseInt(draggedEvent.end_time.split(":")[0], 10)
+      const endMinute = Number.parseInt(draggedEvent.end_time.split(":")[1], 10)
+      const durationMinutes = (endHour - startHour) * 60 + (endMinute - startMinute)
 
-	return (
-		<div className='h-full bg-white overflow-auto'>
-			<div className='flex flex-col h-full'>
-				{/* Header with days */}
-				<div className='flex border-b sticky top-0 bg-white z-10'>
-					<div className='w-16 flex-shrink-0 border-r bg-gray-50'></div>
-					{daysOfWeek.map((day, index) => (
-						<div
-							key={index}
-							className={classNames(
-								'flex-1 text-center py-2 font-medium border-r',
-								isToday(day) ? 'bg-blue-50' : 'bg-gray-50'
-							)}>
-							<div className={classNames('text-sm', isToday(day) ? 'text-blue-600' : 'text-gray-700')}>
-								{formatDate(day)}
-							</div>
-						</div>
-					))}
-				</div>
+      const endTotalMinutes = totalMinutes + durationMinutes
+      const newEndHour = Math.floor(endTotalMinutes / 60) + 3
+      const newEndMinute = endTotalMinutes % 60
+      const newend_time = `${newEndHour.toString().padStart(2, "0")}:${newEndMinute.toString().padStart(2, "0")}`
 
-				{/* Time grid */}
-				<div className='flex flex-1 relative' ref={timeGridRef}>
-					{/* Time labels */}
-					<div className='w-16 flex-shrink-0 border-r'>
-						{hoursOfDay.map(hour => (
-							<div key={hour} className='h-[60px] border-b text-xs text-gray-500 text-right pr-2 pt-0'>
-								{formatTime(hour)}
-							</div>
-						))}
-					</div>
+      const oldDate = new Date(draggedEvent.date)
+      const sameDay =
+        oldDate.getDate() === day.getDate() &&
+        oldDate.getMonth() === day.getMonth() &&
+        oldDate.getFullYear() === day.getFullYear()
 
-					{/* Days columns */}
-					{daysOfWeek.map((day, dayIndex) => (
-						<div
-							key={dayIndex}
-							data-day-index={dayIndex}
-							className='flex-1 border-r relative'
-							onDragOver={e => handleDragOver(e, day)}
-							onDrop={e => handleDrop(e, day, dayIndex)}>
-							{/* Hour cells */}
-							{hoursOfDay.map(hour => (
-								<div
-									key={hour}
-									className={classNames('h-[60px] border-b border-gray-100', isToday(day) ? 'bg-blue-50/30' : '')}
-									onClick={() => {
-										const clickedDate = new Date(day)
-										clickedDate.setHours(hour)
-										onTimeClick(clickedDate)
-									}}></div>
-							))}
+      if (sameDay) {
+        onDragEventTime(draggedEvent.id, newstart_time, newend_time)
+      } else {
+        const newDate = new Date(day)
+        newDate.setHours(newHour, newMinute, 0, 0)
+        onDragEvent(draggedEvent.id, newDate)
+        onDragEventTime(draggedEvent.id, newstart_time, newend_time)
+      }
 
-							{/* Events */}
-							<div className='absolute inset-0 pointer-events-none'>
-								{getEventsForDay(day).map(event => {
-									const layout = eventLayouts[day.toISOString()][event.id] || { width: 'calc(100% - 4px)', left: '2px' }
+      setDraggedEvent(null)
+      setDragStartY(null)
+    }
+  }
 
-									return (
-										<motion.div
-											key={event.id}
-											className={classNames(
-												'absolute rounded px-2 py-1 text-white text-xs overflow-hidden pointer-events-auto cursor-move',
-												hoveredEvent === event.id ? 'ring-2 ring-white' : ''
-											)}
-											style={{
-												...getEventStyle(event),
-												width: layout.width,
-												left: layout.left,
-												zIndex: layout.zIndex || 10,
-											}}
-											onClick={e => {
-												e.stopPropagation()
-												onEventClick(event)
-											}}
-											draggable
-											onDragStart={e => handleDragStart(e, event)}
-											onDragEnd={handleDragEnd}
-											onMouseEnter={() => {
-												setHoveredEvent(event.id)
-												setShowTooltip(event.id)
-											}}
-											onMouseLeave={() => {
-												setHoveredEvent(null)
-												setShowTooltip(null)
-											}}
-											initial={{ opacity: 0 }}
-											animate={{
-												opacity: draggedEvent && draggedEvent.id === event.id ? 0.5 : 1,
-											}}
-											transition={{ duration: 0.2 }}>
-											<div className='font-medium truncate'>{event.title}</div>
-											<div className='text-xs text-white text-opacity-90 truncate'>{getEventDetails(event)}</div>
+  const handleDragEnd = () => {
+    setDraggedEvent(null)
+    setDragStartY(null)
+  }
 
-											{/* Tooltip */}
-											{showTooltip === event.id && (
-												<div className='absolute z-50 bg-white rounded-md shadow-lg p-2 text-sm w-56 left-full ml-2 mt-0 text-gray-800'>
-													<div className='space-y-1'>
-														<p className='font-medium'>{event.title}</p>
-														<div className='flex items-center text-xs text-gray-500'>
-															<Clock className='w-3 h-3 mr-1' />
-															{event.start_time} - {event.end_time}
-														</div>
-														{event.driver_id && (
-															<div className='flex items-center text-xs text-gray-500'>
-																<User className='w-3 h-3 mr-1' />
-																Kursant: {event.driver?.name || 'Brak danych'}
-															</div>
-														)}
-														{event.instructor_id && (
-															<div className='flex items-center text-xs text-gray-500'>
-																<BookOpen className='w-3 h-3 mr-1' />
-																Instruktor: {event.instructor?.name || 'Brak danych'}
-															</div>
-														)}
-													</div>
-												</div>
-											)}
-										</motion.div>
-									)
-								})}
-							</div>
-						</div>
-					))}
+  return (
+    <div className="h-full bg-white">
+      <div className="flex flex-col h-full">
+        {/* Unified scrolling container */}
+        <div className="flex-1 overflow-auto">
+          <div
+            className="flex flex-col"
+            style={{
+              width: `${daysOfWeek.reduce((total, day) => total + dayLayouts[day.toISOString()].dayWidth, 0) + 64}px`,
+            }}
+          >
+            {/* Header with days */}
+            <div className="flex border-b sticky top-0 bg-white z-10">
+              <div className="w-16 flex-shrink-0 border-r bg-gray-50"></div>
+              {daysOfWeek.map((day, index) => {
+                const dayLayout = dayLayouts[day.toISOString()]
+                return (
+                  <div
+                    key={index}
+                    className={classNames(
+                      "text-center py-2 font-medium border-r",
+                      isToday(day) ? "bg-blue-50" : "bg-gray-50",
+                    )}
+                    style={{
+                      minWidth: `${dayLayout.dayWidth}px`,
+                      width: `${dayLayout.dayWidth}px`,
+                    }}
+                  >
+                    <div className={classNames("text-sm", isToday(day) ? "text-blue-600" : "text-gray-700")}>
+                      {formatDate(day)}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
 
-					{/* Current time indicator */}
-					<div className='absolute left-16 right-0 z-20 pointer-events-none'>
-						{(() => {
-							const now = new Date()
-							const currentHour = now.getHours()
-							const currentMinute = now.getMinutes()
+            {/* Time grid */}
+            <div className="flex relative" ref={timeGridRef}>
+              {/* Time labels */}
+              <div className="w-16 flex-shrink-0 border-r bg-white">
+                {hoursOfDay.map((hour) => (
+                  <div key={hour} className="h-[60px] border-b text-xs text-gray-500 text-right pr-2 pt-0">
+                    {formatTime(hour)}
+                  </div>
+                ))}
+              </div>
 
-							// Only show if current time is within view
-							if (currentHour >= 3 && currentHour < 24) {
-								const top = (currentHour - 3) * 60 + currentMinute
-								return (
-									<div className='absolute h-0.5 bg-red-500 w-full' style={{ top: `${top}px` }}>
-										<div className='absolute -left-1 -top-1.5 w-3 h-3 rounded-full bg-red-500'></div>
-									</div>
-								)
-							}
-							return null
-						})()}
-					</div>
-				</div>
-			</div>
-		</div>
-	)
+              {/* Days columns */}
+              {daysOfWeek.map((day, dayIndex) => {
+                const dayLayout = dayLayouts[day.toISOString()]
+
+                return (
+                  <div
+                    key={dayIndex}
+                    data-day-index={dayIndex}
+                    className="border-r relative"
+                    style={{
+                      minWidth: `${dayLayout.dayWidth}px`,
+                      width: `${dayLayout.dayWidth}px`,
+                    }}
+                    onDragOver={(e) => handleDragOver(e, day)}
+                    onDrop={(e) => handleDrop(e, day, dayIndex)}
+                  >
+                    {/* Hour cells */}
+                    {hoursOfDay.map((hour) => (
+                      <div
+                        key={hour}
+                        className={classNames("h-[60px] border-b border-gray-100", isToday(day) ? "bg-blue-50/30" : "")}
+                        onClick={() => {
+                          const clickedDate = new Date(day)
+                          clickedDate.setHours(hour)
+                          onTimeClick(clickedDate)
+                        }}
+                      ></div>
+                    ))}
+
+                    {/* Events container */}
+                    <div className="absolute inset-0 pointer-events-none">
+                      {getEventsForDay(day).map((event) => {
+                        const layout = dayLayout.layouts[event.id]
+                        if (!layout) return null
+
+                        const eventInfo = getEventDisplayInfo(event)
+
+                        return (
+                          <motion.div
+                            key={event.id}
+                            className={classNames(
+                              "absolute rounded px-2 py-1 text-white text-xs pointer-events-auto cursor-move",
+                              "shadow-md border border-white/30 transition-all duration-200",
+                              hoveredEvent === event.id ? "ring-2 ring-white/70 shadow-lg" : "",
+                            )}
+                            style={{
+                              ...getEventStyle(event, layout),
+                              width: layout.width,
+                              left: layout.left,
+                              zIndex: hoveredEvent === event.id ? 100 : layout.column + 10,
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onEventClick(event)
+                            }}
+                            draggable
+                            onDragStart={(e) => handleDragStart(e, event)}
+                            onDragEnd={handleDragEnd}
+                            onMouseEnter={() => setHoveredEvent(event.id)}
+                            onMouseLeave={() => setHoveredEvent(null)}
+                            initial={{ opacity: 0 }}
+                            animate={{
+                              opacity: draggedEvent && draggedEvent.id === event.id ? 0.5 : 1,
+                            }}
+                            transition={{ duration: 0.2 }}
+                          >
+                            <div className="space-y-1">
+                              <div className="font-medium leading-tight">{event.title}</div>
+
+                              {/* Always show time */}
+                              <div className="flex items-center text-xs opacity-90">
+                                <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
+                                <span>{eventInfo.time}</span>
+                              </div>
+
+                              {/* Show additional info on hover or if event is tall enough */}
+                              {(hoveredEvent === event.id ||
+                                getEventStyle(event, layout).height.replace("px", "") > 60) && (
+                                <>
+                                  <div className="flex items-center text-xs opacity-90">
+                                    <User className="w-3 h-3 mr-1 flex-shrink-0" />
+                                    <span className="truncate">{eventInfo.studentName}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-xs opacity-90">
+                                    <div className="flex items-center">
+                                      <Car className="w-3 h-3 mr-1 flex-shrink-0" />
+                                      <span>{eventInfo.category}</span>
+                                    </div>
+                                    <div className="flex items-center">
+                                      <Phone className="w-3 h-3 mr-1 flex-shrink-0" />
+                                      <span className="text-xs">{eventInfo.phone}</span>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </motion.div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+
+              {/* Current time indicator */}
+              <div className="absolute left-16 right-0 z-20 pointer-events-none">
+                {(() => {
+                  const now = new Date()
+                  const currentHour = now.getHours()
+                  const currentMinute = now.getMinutes()
+
+                  if (currentHour >= 3 && currentHour < 24) {
+                    const top = (currentHour - 3) * 60 + currentMinute
+                    return (
+                      <div className="absolute h-0.5 bg-red-500 w-full" style={{ top: `${top}px` }}>
+                        <div className="absolute -left-1 -top-1.5 w-3 h-3 rounded-full bg-red-500"></div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

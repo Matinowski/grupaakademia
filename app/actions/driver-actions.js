@@ -46,17 +46,7 @@ export async function getDrivers() {
         if (eventsError) throw paymentsError
         // Pobierz dane przypisanego instruktora
         let instructorData = null
-        if (driver.instructor_id) {
-          const { data: instructor, error: instructorError } = await supabaseAdmin
-            .from("users")
-            .select("id, name, surname, phone, email")
-            .eq("id", driver.instructor_id)
-            .single()
 
-          if (!instructorError && instructor) {
-            instructorData = instructor
-          }
-        }
 
         return {
           ...driver,
@@ -133,7 +123,6 @@ export async function addDriver(driverData) {
       contract_date: driverData.contract_date || null,
       completed_hours: driverData.completed_hours || 0,
       remaining_hours: driverData.remaining_hours || 30,
-      instructor_id: driverData.instructor_id || null,
       notes: driverData.notes || null,
       payment_type: driverData.payment_type,
       total_paid: driverData.total_paid || 0,
@@ -201,7 +190,6 @@ export async function updateDriver(driverData) {
       contract_date: driverData.contract_date || null,
       completed_hours: driverData.completed_hours || 0,
       remaining_hours: driverData.remaining_hours || 0,
-      instructor_id: driverData.instructor_id || null,
       notes: driverData.notes || null,
       payment_type: driverData.payment_type,
       total_paid: driverData.totalPaid || 0,

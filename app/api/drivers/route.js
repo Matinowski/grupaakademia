@@ -15,7 +15,6 @@ export async function GET() {
         license_type,
         remaining_hours,
         completed_hours,
-        instructor_id,
         start_date,
         branch
       `)

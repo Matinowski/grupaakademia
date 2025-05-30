@@ -1,408 +1,432 @@
-'use client'
+"use client"
 
-import { useState, useRef } from 'react'
-import { motion } from 'framer-motion'
-import { Clock, User, BookOpen, Car, Tag } from 'lucide-react'
+import { useState, useRef } from "react"
+import { motion } from "framer-motion"
+import { Clock, User, Car, Phone } from "lucide-react"
 
 export default function DayView({
-	currentDate,
-	events,
-	onTimeClick,
-	onEventClick,
-	onDragEventTime,
-	userRole = 'admin',
+  currentDate,
+  events,
+  onTimeClick,
+  onEventClick,
+  onDragEventTime,
+  userRole = "admin",
 }) {
-	const [draggedEvent, setDraggedEvent] = useState(null)
-	const [dragStartY, setDragStartY] = useState(null)
-	const [hoveredEvent, setHoveredEvent] = useState(null)
-	const [showTooltip, setShowTooltip] = useState(null)
-	const timeGridRef = useRef(null)
+  const [draggedEvent, setDraggedEvent] = useState(null)
+  const [dragStartY, setDragStartY] = useState(null)
+  const [hoveredEvent, setHoveredEvent] = useState(null)
+  const timeGridRef = useRef(null)
 
-	// Utility function to conditionally join classNames
-	function classNames(...classes) {
-		return classes.filter(Boolean).join(' ')
-	}
+  function classNames(...classes) {
+    return classes.filter(Boolean).join(" ")
+  }
 
-	const calendarStartHour = 3
-	// Get hours of the day
-	const getHoursOfDay = () => {
-		const hours = []
-		for (let i = 3; i < 24; i++) {
-			hours.push(i)
-		}
-		return hours
-	}
+  const calendarStartHour = 3
 
-	// Format time
-	const formatTime = hour => {
-		return `${hour.toString().padStart(2, '0')}:00`
-	}
+  const getHoursOfDay = () => {
+    const hours = []
+    for (let i = 3; i < 24; i++) {
+      hours.push(i)
+    }
+    return hours
+  }
 
-	// Format date for header
-	const formatDateHeader = date => {
-		return date.toLocaleDateString('pl-PL', {
-			weekday: 'long',
-			day: 'numeric',
-			month: 'long',
-			year: 'numeric',
-		})
-	}
+  const formatTime = (hour) => {
+    return `${hour.toString().padStart(2, "0")}:00`
+  }
 
-	// Get events for the current day
-	const getEventsForDay = () => {
-		return events.filter(event => {
-			const eventDate = new Date(event.date)
-			return (
-				eventDate.getDate() === currentDate.getDate() &&
-				eventDate.getMonth() === currentDate.getMonth() &&
-				eventDate.getFullYear() === currentDate.getFullYear()
-			)
-		})
-	}
+  const formatDateHeader = (date) => {
+    return date.toLocaleDateString("pl-PL", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })
+  }
 
-	// Get event position and height
-	const getEventStyle = event => {
-		const eventStartHour = Number.parseInt(event.start_time.split(':')[0], 10)
-		const eventStartMinute = Number.parseInt(event.start_time.split(':')[1], 10)
-		const eventEndHour = Number.parseInt(event.end_time.split(':')[0], 10)
-		const eventEndMinute = Number.parseInt(event.end_time.split(':')[1], 10)
+  const getEventsForDay = () => {
+    return events.filter((event) => {
+      const eventDate = new Date(event.date)
+      return (
+        eventDate.getDate() === currentDate.getDate() &&
+        eventDate.getMonth() === currentDate.getMonth() &&
+        eventDate.getFullYear() === currentDate.getFullYear()
+      )
+    })
+  }
 
-		const startPosition = (eventStartHour - calendarStartHour) * 60 + eventStartMinute
-		const duration = (eventEndHour - eventStartHour) * 60 + (eventEndMinute - eventStartMinute)
+  // Google Calendar style layout algorithm for day view
+  const calculateEventLayout = (events) => {
+    if (!events.length) return { layouts: {}, maxColumns: 0, totalWidth: 300 }
 
-		return {
-			top: `${startPosition}px`,
-			height: `${duration}px`,
-			backgroundColor: getEventTypeColor(event),
-		}
-	}
+    const eventsWithTimes = events.map((event) => ({
+      ...event,
+      startMinutes:
+        Number.parseInt(event.start_time.split(":")[0], 10) * 60 + Number.parseInt(event.start_time.split(":")[1], 10),
+      endMinutes:
+        Number.parseInt(event.end_time.split(":")[0], 10) * 60 + Number.parseInt(event.end_time.split(":")[1], 10),
+    }))
 
-	// Get event color based on type
+    eventsWithTimes.sort((a, b) => {
+      if (a.startMinutes !== b.startMinutes) {
+        return a.startMinutes - b.startMinutes
+      }
+      return b.endMinutes - b.startMinutes - (a.endMinutes - a.startMinutes)
+    })
 
-	const getEventTypeColor = event => {
-		const createdAt = new Date(event.created_at)
-		const hour = createdAt.getHours()
-		console.log(createdAt)
-		console.log(event, hour)
+    const columns = []
+    const eventLayouts = {}
 
-		if (hour >= 14) {
-			return '#FBBF24' // amber
-		} else if (event.payment_due) {
-			return '#FF0000' // Red for payment due
-		} else {
-			switch (event.lessonType) {
-				case 'practical':
-					return '#10B981' // green
-				case 'theory':
-					return '#6366F1' // indigo
-				case 'exam':
-					return '#F43F5E' // rose
-				default:
-					return event.color || '#4285F4' // blue
-			}
-		}
-	}
+    eventsWithTimes.forEach((event) => {
+      let columnIndex = 0
 
-	// Get event details
-	const getEventDetails = event => {
-		const details = []
+      while (columnIndex < columns.length) {
+        const column = columns[columnIndex]
+        let canFit = true
 
-		if (event.start_time && event.end_time) {
-			details.push(`${event.start_time} - ${event.end_time}`)
-		}
+        for (const existingEvent of column) {
+          if (event.startMinutes < existingEvent.endMinutes && event.endMinutes > existingEvent.startMinutes) {
+            canFit = false
+            break
+          }
+        }
 
-		if (event.driver_id) {
-			const driver = event.driver || { name: 'Kursant' }
-			details.push(driver.name)
-		}
+        if (canFit) break
+        columnIndex++
+      }
 
-		if (event.instructor_id) {
-			const instructor = event.instructor || { name: 'Instruktor' }
-			if (userRole !== 'instructor') {
-				details.push(instructor.name)
-			}
-		}
+      if (columnIndex === columns.length) {
+        columns.push([])
+      }
 
-		if (details.length > 0) {
-			return details.join(' • ')
-		}
+      columns[columnIndex].push(event)
 
-		return ''
-	}
+      eventLayouts[event.id] = {
+        column: columnIndex,
+        totalColumns: 0,
+      }
+    })
 
-	// Drag and drop handlers
-	const handleDragStart = (e, event) => {
-		e.stopPropagation()
-		setDraggedEvent(event)
+    const maxColumns = columns.length
+    const eventWidth = 180 // Slightly wider for day view
+    const eventGap = 6 // Gap between events
+    const minDayWidth = 300 // Minimum width for single day
 
-		// Calculate drag start position
-		const rect = e.currentTarget.getBoundingClientRect()
-		setDragStartY(e.clientY - rect.top)
-	}
+    // Calculate total width needed
+    const totalWidth =
+      maxColumns > 0
+        ? Math.max(maxColumns * (eventWidth + eventGap) - eventGap + 32, minDayWidth) // 32px for padding
+        : minDayWidth
 
-	const handleDragOver = e => {
-		e.preventDefault()
-	}
+    Object.keys(eventLayouts).forEach((eventId) => {
+      const event = eventsWithTimes.find((e) => e.id === eventId)
+      const layout = eventLayouts[eventId]
 
-	const handleDrop = e => {
-		e.preventDefault()
-		if (draggedEvent) {
-			const timeGridRect = timeGridRef.current.getBoundingClientRect()
-			const relativeY = e.clientY - timeGridRect.top
+      let rightmostColumn = layout.column
 
-			const totalMinutes = Math.floor(relativeY)
-			let newHour = Math.floor(totalMinutes / 60) + calendarStartHour
-			let newMinute = totalMinutes % 60
+      for (let col = layout.column + 1; col < maxColumns; col++) {
+        const column = columns[col]
+        let canExpand = true
 
-			// Zabezpieczenie przed wyjściem poza 23:59
-			if (newHour > 23 || (newHour === 23 && newMinute > 59)) {
-				newHour = 23
-				newMinute = 59
-			}
+        for (const existingEvent of column) {
+          if (event.startMinutes < existingEvent.endMinutes && event.endMinutes > existingEvent.startMinutes) {
+            canExpand = false
+            break
+          }
+        }
 
-			const newstart_time = `${newHour.toString().padStart(2, '0')}:${newMinute.toString().padStart(2, '0')}`
+        if (!canExpand) break
+        rightmostColumn = col
+      }
 
-			const startHour = Number.parseInt(draggedEvent.start_time.split(':')[0], 10)
-			const startMinute = Number.parseInt(draggedEvent.start_time.split(':')[1], 10)
-			const endHour = Number.parseInt(draggedEvent.end_time.split(':')[0], 10)
-			const endMinute = Number.parseInt(draggedEvent.end_time.split(':')[1], 10)
-			const durationMinutes = (endHour - startHour) * 60 + (endMinute - startMinute)
+      const columnsSpanned = rightmostColumn - layout.column + 1
+      const width = columnsSpanned * eventWidth + (columnsSpanned - 1) * eventGap
+      const left = layout.column * (eventWidth + eventGap) + 16 // 16px left padding
 
-			let endTotalMinutes = totalMinutes + durationMinutes
-			let newEndHour = Math.floor(endTotalMinutes / 60) + calendarStartHour
-			let newEndMinute = endTotalMinutes % 60
+      eventLayouts[eventId] = {
+        ...layout,
+        width: `${width}px`,
+        left: `${left}px`,
+        totalColumns: maxColumns,
+        columnsSpanned,
+      }
+    })
 
-			// Korekta jeśli end_time wykracza poza zakres
-			if (newEndHour > 23 || (newEndHour === 23 && newEndMinute > 59)) {
-				newEndHour = 23
-				newEndMinute = 59
-			}
+    return { layouts: eventLayouts, maxColumns, totalWidth }
+  }
 
-			const newend_time = `${newEndHour.toString().padStart(2, '0')}:${newEndMinute.toString().padStart(2, '0')}`
+  const getEventStyle = (event, layout) => {
+    const eventStartHour = Number.parseInt(event.start_time.split(":")[0], 10)
+    const eventStartMinute = Number.parseInt(event.start_time.split(":")[1], 10)
+    const eventEndHour = Number.parseInt(event.end_time.split(":")[0], 10)
+    const eventEndMinute = Number.parseInt(event.end_time.split(":")[1], 10)
 
-			onDragEventTime(draggedEvent.id, newstart_time, newend_time)
+    const startPosition = (eventStartHour - calendarStartHour) * 60 + eventStartMinute
+    const duration = (eventEndHour - eventStartHour) * 60 + (eventEndMinute - eventStartMinute)
 
-			setDraggedEvent(null)
-			setDragStartY(null)
-		}
-	}
+    // Expand height on hover for short events
+    const isHovered = hoveredEvent === event.id
+    const minHeight = isHovered && duration < 80 ? 120 : Math.max(duration, 30)
 
-	const handleDragEnd = () => {
-		setDraggedEvent(null)
-		setDragStartY(null)
-	}
+    return {
+      top: `${startPosition}px`,
+      height: `${minHeight}px`,
+      backgroundColor: getEventTypeColor(event),
+      transform: isHovered ? "scale(1.02)" : "scale(1)",
+      zIndex: isHovered ? 1000 : "auto",
+      transition: "all 0.2s ease-in-out",
+    }
+  }
 
-	// Check if date is today
-	const isToday = () => {
-		const today = new Date()
-		return (
-			currentDate.getDate() === today.getDate() &&
-			currentDate.getMonth() === today.getMonth() &&
-			currentDate.getFullYear() === today.getFullYear()
-		)
-	}
+  const getEventTypeColor = (event) => {
+    const createdAt = new Date(event.created_at)
+    const hour = createdAt.getHours()
 
-	const hoursOfDay = getHoursOfDay()
-	const dayEvents = getEventsForDay()
+    if (hour >= 14) {
+      return "#FBBF24"
+    } else if (event.payment_due) {
+      return "#FF0000"
+    } else {
+      switch (event.lessonType) {
+        case "practical":
+          return "#10B981"
+        case "theory":
+          return "#6366F1"
+        case "exam":
+          return "#F43F5E"
+        default:
+          return event.color || "#4285F4"
+      }
+    }
+  }
 
-	// Calculate event layout to prevent overlaps
-	const calculateEventLayout = events => {
-		if (!events.length) return {}
+  const getEventDisplayInfo = (event) => {
+    const info = {
+      time: event.start_time,
+      studentName: event.driver?.name || "Brak danych",
+      category: event.driver?.license_category || "B",
+      phone: event.driver?.phone || "Brak tel.",
+      instructor: event.instructor?.name || "Brak instruktora",
+    }
+    return info
+  }
 
-		// Sort events by start time
-		const sortedEvents = [...events].sort((a, b) => {
-			const aStart =
-				Number.parseInt(a.start_time.split(':')[0], 10) * 60 + Number.parseInt(a.start_time.split(':')[1], 10)
-			const bStart =
-				Number.parseInt(b.start_time.split(':')[0], 10) * 60 + Number.parseInt(b.start_time.split(':')[1], 10)
-			return aStart - bStart
-		})
+  const handleDragStart = (e, event) => {
+    e.stopPropagation()
+    setDraggedEvent(event)
+    const rect = e.currentTarget.getBoundingClientRect()
+    setDragStartY(e.clientY - rect.top)
+  }
 
-		// Group overlapping events
-		const groups = []
-		let currentGroup = [sortedEvents[0]]
+  const handleDragOver = (e) => {
+    e.preventDefault()
+  }
 
-		for (let i = 1; i < sortedEvents.length; i++) {
-			const event = sortedEvents[i]
-			const eventStart =
-				Number.parseInt(event.start_time.split(':')[0], 10) * 60 + Number.parseInt(event.start_time.split(':')[1], 10)
+  const handleDrop = (e) => {
+    e.preventDefault()
+    if (draggedEvent) {
+      const timeGridRect = timeGridRef.current.getBoundingClientRect()
+      const relativeY = e.clientY - timeGridRect.top
 
-			// Check if this event overlaps with any event in the current group
-			let overlaps = false
-			for (const groupEvent of currentGroup) {
-				const groupEventEnd =
-					Number.parseInt(groupEvent.end_time.split(':')[0], 10) * 60 +
-					Number.parseInt(groupEvent.end_time.split(':')[1], 10)
-				if (eventStart < groupEventEnd) {
-					overlaps = true
-					break
-				}
-			}
+      const totalMinutes = Math.floor(relativeY)
+      let newHour = Math.floor(totalMinutes / 60) + calendarStartHour
+      let newMinute = totalMinutes % 60
 
-			if (overlaps) {
-				currentGroup.push(event)
-			} else {
-				groups.push([...currentGroup])
-				currentGroup = [event]
-			}
-		}
+      if (newHour > 23 || (newHour === 23 && newMinute > 59)) {
+        newHour = 23
+        newMinute = 59
+      }
 
-		groups.push(currentGroup)
+      const newstart_time = `${newHour.toString().padStart(2, "0")}:${newMinute.toString().padStart(2, "0")}`
 
-		// Calculate position for each event
-		const eventLayout = {}
+      const startHour = Number.parseInt(draggedEvent.start_time.split(":")[0], 10)
+      const startMinute = Number.parseInt(draggedEvent.start_time.split(":")[1], 10)
+      const endHour = Number.parseInt(draggedEvent.end_time.split(":")[0], 10)
+      const endMinute = Number.parseInt(draggedEvent.end_time.split(":")[1], 10)
+      const durationMinutes = (endHour - startHour) * 60 + (endMinute - startMinute)
 
-		groups.forEach(group => {
-			const groupSize = group.length
+      const endTotalMinutes = totalMinutes + durationMinutes
+      let newEndHour = Math.floor(endTotalMinutes / 60) + calendarStartHour
+      let newEndMinute = endTotalMinutes % 60
 
-			group.forEach((event, index) => {
-				eventLayout[event.id] = {
-					width: groupSize > 1 ? `calc(${100 / groupSize}% - 4px)` : 'calc(100% - 4px)',
-					left: groupSize > 1 ? `calc(${(100 / groupSize) * index}% + 2px)` : '2px',
-					zIndex: 10 + index, // Higher index events appear on top
-				}
-			})
-		})
+      if (newEndHour > 23 || (newEndHour === 23 && newEndMinute > 59)) {
+        newEndHour = 23
+        newEndMinute = 59
+      }
 
-		return eventLayout
-	}
+      const newend_time = `${newEndHour.toString().padStart(2, "0")}:${newEndMinute.toString().padStart(2, "0")}`
 
-	const eventLayout = calculateEventLayout(dayEvents)
+      onDragEventTime(draggedEvent.id, newstart_time, newend_time)
 
-	return (
-		<div className='h-full bg-white overflow-auto'>
-			<div className='flex flex-col h-full'>
-				{/* Day header */}
-				<div className='border-b sticky top-0 bg-white z-10 py-3 px-4'>
-					<h2 className={classNames('text-xl font-semibold', isToday() ? 'text-blue-600' : 'text-gray-800')}>
-						{formatDateHeader(currentDate)}
-						{isToday() && <span className='ml-2 text-sm font-normal text-blue-600'>(Dzisiaj)</span>}
-					</h2>
-				</div>
+      setDraggedEvent(null)
+      setDragStartY(null)
+    }
+  }
 
-				{/* Time grid */}
-				<div className='flex flex-1 relative' ref={timeGridRef}>
-					{/* Time labels */}
-					<div className='w-20 flex-shrink-0 border-r'>
-						{hoursOfDay.map(hour => (
-							<div key={hour} className='h-[60px] border-b text-xs text-gray-500 text-right pr-2 pt-0'>
-								{formatTime(hour)}
-							</div>
-						))}
-					</div>
+  const handleDragEnd = () => {
+    setDraggedEvent(null)
+    setDragStartY(null)
+  }
 
-					{/* Day column */}
-					<div className='flex-1 relative'>
-						{/* Hour cells */}
-						{hoursOfDay.map(hour => (
-							<div
-								key={hour}
-								className={classNames('h-[60px] border-b border-gray-100', isToday() ? 'bg-blue-50/30' : '')}
-								onClick={() => {
-									const clickedDate = new Date(currentDate)
-									clickedDate.setHours(hour)
-									onTimeClick(clickedDate)
-								}}
-								onDragOver={handleDragOver}
-								onDrop={handleDrop}></div>
-						))}
+  const isToday = () => {
+    const today = new Date()
+    return (
+      currentDate.getDate() === today.getDate() &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear()
+    )
+  }
 
-						{/* Half-hour lines */}
-						{hoursOfDay.map(hour => (
-							<div
-								key={`half-${hour}`}
-								className='absolute left-0 right-0 border-b border-dashed border-gray-100'
-								style={{ top: `${(hour - 7) * 60 + 30}px` }}></div>
-						))}
+  const hoursOfDay = getHoursOfDay()
+  const dayEvents = getEventsForDay()
+  const eventLayout = calculateEventLayout(dayEvents)
 
-						{/* Events */}
-						<div className='absolute inset-0 pointer-events-none'>
-							{dayEvents.map(event => (
-								<motion.div
-									key={event.id}
-									className={classNames(
-										'absolute rounded px-2 py-1 text-white text-xs overflow-hidden pointer-events-auto cursor-move',
-										hoveredEvent === event.id ? 'ring-2 ring-white' : ''
-									)}
-									style={{
-										...getEventStyle(event),
-										...(eventLayout[event.id] || { width: 'calc(100% - 4px)', left: '2px' }),
-									}}
-									onClick={e => {
-										e.stopPropagation()
-										onEventClick(event)
-									}}
-									draggable
-									onDragStart={e => handleDragStart(e, event)}
-									onDragEnd={handleDragEnd}
-									onMouseEnter={() => {
-										setHoveredEvent(event.id)
-										setShowTooltip(event.id)
-									}}
-									onMouseLeave={() => {
-										setHoveredEvent(null)
-										setShowTooltip(null)
-									}}
-									initial={{ opacity: 0 }}
-									animate={{
-										opacity: draggedEvent && draggedEvent.id === event.id ? 0.5 : 1,
-									}}
-									transition={{ duration: 0.2 }}>
-									<div className='font-medium truncate'>{event.title}</div>
-									<div className='text-xs text-white text-opacity-90 truncate'>{getEventDetails(event)}</div>
+  return (
+    <div className="h-full bg-white">
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <div className="border-b sticky top-0 bg-white  py-3 px-4">
+          <h2 className={classNames("text-xl font-semibold", isToday() ? "text-blue-600" : "text-gray-800")}>
+            {formatDateHeader(currentDate)}
+            {isToday() && <span className="ml-2 text-sm font-normal text-blue-600">(Dzisiaj)</span>}
+          </h2>
+        </div>
 
-									{/* Tooltip */}
-									{showTooltip === event.id && (
-										<div className='absolute z-50 bg-white rounded-md shadow-lg p-2 text-sm w-56 left-full ml-2 mt-0 text-gray-800'>
-											<div className='space-y-1'>
-												<p className='font-medium'>{event.title}</p>
-												<div className='flex items-center text-xs text-gray-500'>
-													<Clock className='w-3 h-3 mr-1' />
-													{event.start_time} - {event.end_time}
-												</div>
-												{event.driver_id && (
-													<div className='flex items-center text-xs text-gray-500'>
-														<User className='w-3 h-3 mr-1' />
-														Kursant: {event.driver?.name || 'Brak danych'}
-													</div>
-												)}
-												{event.instructor_id && (
-													<div className='flex items-center text-xs text-gray-500'>
-														<BookOpen className='w-3 h-3 mr-1' />
-														Instruktor: {event.instructor?.name || 'Brak danych'}
-													</div>
-												)}
-												{event.description && <p className='text-xs text-gray-600 mt-1'>{event.description}</p>}
-											</div>
-										</div>
-									)}
-								</motion.div>
-							))}
-						</div>
+        {/* Unified scrolling container */}
+        <div className="flex-1 overflow-auto">
+          <div
+            className="flex min-w-full relative"
+            style={{
+              width: `${eventLayout.totalWidth + 64}px`, // 64px for time column
+            }}
+          >
+            {/* Time labels */}
+            <div className="w-16 flex-shrink-0 border-r bg-white">
+              {hoursOfDay.map((hour) => (
+                <div key={hour} className="h-[60px] border-b text-xs text-gray-500 text-right pr-2 pt-0">
+                  {formatTime(hour)}
+                </div>
+              ))}
+            </div>
 
-						{/* Current time indicator */}
-						{isToday() &&
-							(() => {
-								const now = new Date()
-								const currentHour = now.getHours()
-								const currentMinute = now.getMinutes()
+            {/* Day content */}
+            <div className="flex-1 relative min-w-full" style={{ width: `${eventLayout.totalWidth}px` }} ref={timeGridRef}>
+              {/* Hour cells */}
+              {hoursOfDay.map((hour) => (
+                <div
+                  key={hour}
+                  className={classNames("h-[60px] relative ", isToday() ? "bg-blue-50/30" : "")}
+                  onClick={() => {
+                    const clickedDate = new Date(currentDate)
+                    clickedDate.setHours(hour)
+                    onTimeClick(clickedDate)
+                  }}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                >
+                  {/* Full width border line */}
+                  <div
+                    className="absolute bottom-0 left-0 h-px bg-gray-100 min-w-full"
+                    style={{ width: `${eventLayout.totalWidth}px` }}
+                  />
+                </div>
+              ))}
 
-								// Only show if current time is within view
-								if (currentHour >= 7 && currentHour < 20) {
-									const top = (currentHour - 7) * 60 + currentMinute
-									return (
-										<div
-											className='absolute h-0.5 bg-red-500 w-full z-20 pointer-events-none'
-											style={{ top: `${top}px` }}>
-											<div className='absolute -left-1 -top-1.5 w-3 h-3 rounded-full bg-red-500'></div>
-										</div>
-									)
-								}
-								return null
-							})()}
-					</div>
-				</div>
-			</div>
-		</div>
-	)
+              {/* Events container */}
+              <div className="absolute inset-0 pointer-events-none">
+                {dayEvents.map((event) => {
+                  const layout = eventLayout.layouts[event.id]
+                  if (!layout) return null
+
+                  const eventInfo = getEventDisplayInfo(event)
+
+                  return (
+                    <motion.div
+                      key={event.id}
+                      className={classNames(
+                        "absolute rounded px-3 py-2 text-white text-xs pointer-events-auto cursor-move",
+                        "shadow-md border border-white/30 transition-all duration-200",
+                        hoveredEvent === event.id ? "ring-2 ring-white/70 shadow-lg" : "",
+                      )}
+                      style={{
+                        ...getEventStyle(event, layout),
+                        width: layout.width,
+                        left: layout.left,
+                        zIndex: hoveredEvent === event.id ? 100 : layout.column + 10,
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onEventClick(event)
+                      }}
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, event)}
+                      onDragEnd={handleDragEnd}
+                      onMouseEnter={() => setHoveredEvent(event.id)}
+                      onMouseLeave={() => setHoveredEvent(null)}
+                      initial={{ opacity: 0 }}
+                      animate={{
+                        opacity: draggedEvent && draggedEvent.id === event.id ? 0.5 : 1,
+                      }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <div className="space-y-1">
+                        <div className="font-medium leading-tight text-sm">{event.title}</div>
+
+                        {/* Always show time */}
+                        <div className="flex items-center text-xs opacity-90">
+                          <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
+                          <span className="whitespace-nowrap">{eventInfo.time}</span>
+                        </div>
+
+                        {/* Show additional info on hover or if event is tall enough */}
+                        {(hoveredEvent === event.id || getEventStyle(event, layout).height.replace("px", "") > 80) && (
+                          <>
+                            <div className="flex items-center text-xs opacity-90">
+                              <User className="w-3 h-3 mr-1 flex-shrink-0" />
+                              <span className="leading-tight break-words">{eventInfo.studentName}</span>
+                            </div>
+                            <div className="flex items-center justify-between text-xs opacity-90 flex-wrap gap-1">
+                              <div className="flex items-center">
+                                <Car className="w-3 h-3 mr-1 flex-shrink-0" />
+                                <span>{eventInfo.category}</span>
+                              </div>
+                              <div className="flex items-center">
+                                <Phone className="w-3 h-3 mr-1 flex-shrink-0" />
+                                <span className="text-xs whitespace-nowrap">{eventInfo.phone}</span>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </motion.div>
+                  )
+                })}
+              </div>
+
+              {/* Current time indicator */}
+              {isToday() &&
+                (() => {
+                  const now = new Date()
+                  const currentHour = now.getHours()
+                  const currentMinute = now.getMinutes()
+
+                  if (currentHour >= 3 && currentHour < 24) {
+                    const top = (currentHour - 3) * 60 + currentMinute
+                    return (
+                      <div
+                        className="absolute h-0.5 bg-red-500 w-full z-20 pointer-events-none"
+                        style={{ top: `${top}px` }}
+                      >
+                        <div className="absolute -left-1 -top-1.5 w-3 h-3 rounded-full bg-red-500"></div>
+                      </div>
+                    )
+                  }
+                  return null
+                })()}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }

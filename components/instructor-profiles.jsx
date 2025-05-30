@@ -7,6 +7,8 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedInstructor, setSelectedInstructor] = useState(null)
 
+  console.log("Instructors567567567:", instructors)
+
   function formatDate(dateString) {
     const date = new Date(dateString);
     const day = String(date.getUTCDate()).padStart(2, '0');
@@ -121,7 +123,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
             <div className="flex items-start justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-gray-800">{selectedInstructor.name + " " + selectedInstructor.surname}</h2>
-                <p className="text-gray-500">Kategorie prawa jazdy: {selectedInstructor.instructors.category}</p>
+                <p className="text-gray-500">Kategorie prawa jazdy: {selectedInstructor?.instructors?.category}</p>
               </div>
               <div
                 className={`px-3 py-1 rounded-full text-sm font-medium ${
@@ -153,46 +155,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
 
             </div>
 
-            <div className="mb-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-lg font-medium">Przypisani kursanci</h3>
-                <span className="text-sm text-gray-500">
-                  {selectedInstructor.drivers.length} kursantów
-                </span>
-              </div>
 
-              {selectedInstructor.drivers.length > 0 ? (
-                <div className="space-y-2">
-                  {selectedInstructor.drivers.map((driver) => (
-                    <div key={driver.id} className="p-3 border rounded-md flex items-center justify-between">
-                      <div className="flex items-center">
-                        <User className="w-5 h-5 mr-3 text-blue-500" />
-                        <div>
-                          <div className="font-medium">{driver.name}</div>
-                          <div className="text-sm text-gray-500">
-                            Kategoria: {driver.license_type} •
-                            {(driver.remaining_hours - driver.completed_hours) > 0
-                              ? ` ${(driver.remaining_hours - driver.completed_hours)} godzin pozostało`
-                              : " Szkolenie ukończone"}
-                          </div>
-                        </div>
-                      </div>
-                      <div
-                        className={`px-2 py-1 text-xs rounded-full ${
-                          (driver.remaining_hours - driver.completed_hours) === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
-                        }`}
-                      >
-                        {(driver.remaining_hours - driver.completed_hours) === 0 ? "Ukończone" : "W trakcie"}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-gray-500 p-4 text-center border rounded-md">
-                  Brak kursantów przypisanych do tego instruktora.
-                </div>
-              )}
-            </div>
 
             <div>
               <h3 className="text-lg font-medium mb-2">Harmonogram</h3>
