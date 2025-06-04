@@ -14,16 +14,16 @@ export default function LoginPage() {
 	const [error, setError] = useState('')
 	const [isLoading, setIsLoading] = useState(false)
 	const { login, isAuthenticated, passwordResetNeded } = useAuth()
+	const [isResettingPassword, setIsResettingPassword] = useState(false)
 
 	const router = useRouter()
 
 	// Sprawdzenie, czy użytkownik jest zalogowany
 	useEffect(() => {
-		if (isAuthenticated) {
-			// Jeśli użytkownik jest już zalogowany, przekierowanie do panelu
+		if (isAuthenticated && !isResettingPassword) {
 			router.push('/dashboard')
 		}
-	}, [isAuthenticated, router])
+	}, [isAuthenticated, isResettingPassword, router])
 
 	const handleSubmit = async e => {
 		e.preventDefault()
@@ -35,6 +35,7 @@ export default function LoginPage() {
 			if (response.resetPassword) {
 				// Jeśli użytkownik musi zresetować hasło, przekierowanie do strony resetowania hasła
 				console.log('jestem')
+				setIsResettingPassword(true)
 				router.push('/reset-password')
 			} else {
 				router.push('/dashboard')
