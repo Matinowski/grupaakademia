@@ -126,6 +126,7 @@ export async function addDriver(driverData) {
       notes: driverData.notes || null,
       payment_type: driverData.payment_type,
       total_paid: driverData.total_paid || 0,
+      branch: driverData.branch || null,
     }
 
     // Dodaj kierowcę do bazy danych
@@ -193,6 +194,7 @@ export async function updateDriver(driverData) {
       notes: driverData.notes || null,
       payment_type: driverData.payment_type,
       total_paid: driverData.totalPaid || 0,
+      branch: driverData.branch || null,
     }
 
     // Aktualizuj kierowcę w bazie danych

@@ -122,7 +122,7 @@ export default function InstructorProfiles({ instructors, drivers, onSelectInstr
 								<h2 className='text-2xl font-bold text-gray-800'>
 									{selectedInstructor.name + ' ' + selectedInstructor.surname}
 								</h2>
-								<p className='text-gray-500'>Kategorie prawa jazdy: {selectedInstructor?.instructors?.category}</p>
+								<p className='text-gray-500'>Kategorie prawa jazdy: {selectedInstructor?.instructors?.category.map(category => category + " ")}</p>
 							</div>
 							<div
 								className={`px-3 py-1 rounded-full text-sm font-medium ${

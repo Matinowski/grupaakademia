@@ -40,12 +40,9 @@ export async function GET() {
       .select(
         `id,
         name,
-        surname,
-        phone,
-        status,
-        instructor_id`
+        phone
+        `
       )
-      .in("instructor_id", instructor_ids) // Filtrowanie po przypisanym instruktorze
 
     if (driverError || !drivers) {
       console.log(driverError)

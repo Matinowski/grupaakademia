@@ -24,6 +24,20 @@ import PaymentForm from "@/components/driverProfiels/payment-form"
 import { useAuth } from "@/hooks/use-auth"
 import PdfViewer from "@/components/ui/pdf-viewer"
 
+
+const branches = [
+  "Widzew",
+  "Bałuty",
+  "Zgierz",
+  "Górna",
+  "Dąbrowa",
+  "Retkinia",
+  "Moto-akademia",
+  "Zawodowa-Akademia",
+  "Budowlana-Akademia",
+  "Kwalifikacje i szkolenia Okresowe",
+]
+
 export default function DriverProfiles({ drivers, events }) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
@@ -54,6 +68,7 @@ export default function DriverProfiles({ drivers, events }) {
   const [editInstallments, setEditInstallments] = useState([])
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [pdfPreview, setPdfPreview] = useState(null)
+  const [branchFilter, setBranchFilter] = useState("all")
 
   useEffect(() => {
     // Jeśli mamy wybranego kierowcę, sprawdź, czy istnieje on na nowej liście
@@ -116,6 +131,7 @@ export default function DriverProfiles({ drivers, events }) {
     // Add installments to the new driver object
     const driverWithInstallments = {
       ...newDriver,
+      branch: branchFilter !== "all" ? branchFilter : null,
       paymentInstallments: newDriver.payment_type === "installments" ? installments : [],
     }
 
@@ -157,6 +173,7 @@ export default function DriverProfiles({ drivers, events }) {
     const updatedDriver = {
       ...editedDriver,
       paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
+      branch: branchFilter !== "all" ? branchFilter : null,
     }
 
     startTransition(async () => {
@@ -540,6 +557,7 @@ export default function DriverProfiles({ drivers, events }) {
                 </div>
               </div>
 
+
               <div className="flex items-center">
                 <CreditCard className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -764,6 +782,22 @@ export default function DriverProfiles({ drivers, events }) {
                     min="0"
                   />
                 </div>
+
+                <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">Wszystkie placówki</option>
+                  {branches.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Suma Wpłat (PLN)</label>
@@ -1064,6 +1098,22 @@ export default function DriverProfiles({ drivers, events }) {
                     min="0"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
+                <select
+                  value={branchFilter}
+                  onChange={(e) => setBranchFilter(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">Wszystkie placówki</option>
+                  {branches.map((branch) => (
+                    <option key={branch} value={branch}>
+                      {branch}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

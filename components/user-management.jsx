@@ -1,7 +1,21 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Search, Plus, Edit, Trash2, Check, X, Filter, ChevronDown, Shield, User, Users, Building, RefreshCw } from 'lucide-react'
+import {
+  Search,
+  Plus,
+  Edit,
+  Trash2,
+  Check,
+  X,
+  Filter,
+  ChevronDown,
+  Shield,
+  User,
+  Users,
+  Building,
+  RefreshCw,
+} from "lucide-react"
 import { LoadingProvider, useLoadingScreen, LoadingIndicator } from "@/components/loader/loading-screen"
 import { useNotification } from "@/hooks/use-notification"
 
@@ -42,11 +56,22 @@ function UserManagementContent() {
     role: USER_ROLES.OFFICE,
     branches: [],
     status: USER_STATUS.ACTIVE,
-    licenseCategory: "",
+    licenseCategories: [], // Changed from licenseCategory to licenseCategories array
   })
 
   // Lista placówek
-  const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia", "Moto-akademia", "Zawodowa-Akademia", "Budowlana-Akademia", "Kwalifikacje i szkolenia Okresowe"]
+  const branches = [
+    "Widzew",
+    "Bałuty",
+    "Zgierz",
+    "Górna",
+    "Dąbrowa",
+    "Retkinia",
+    "Moto-akademia",
+    "Zawodowa-Akademia",
+    "Budowlana-Akademia",
+    "Kwalifikacje i szkolenia Okresowe",
+  ]
   const notification = useNotification()
 
   // Przykładowe dane użytkowników
@@ -115,9 +140,7 @@ function UserManagementContent() {
 
     // Filtrowanie po placówce
     if (branchFilter !== "all") {
-      filtered = filtered.filter((user) => 
-        user.branches && user.branches.includes(branchFilter)
-      )
+      filtered = filtered.filter((user) => user.branches && user.branches.includes(branchFilter))
     }
 
     setFilteredUsers(filtered)
@@ -139,7 +162,7 @@ function UserManagementContent() {
           role: newUser.role,
           branches: newUser.branches,
           status: newUser.status,
-          licenseCategory: newUser.role === USER_ROLES.INSTRUCTOR ? newUser.licenseCategory : null,
+          licenseCategory: newUser.role === USER_ROLES.INSTRUCTOR ? newUser.licenseCategories : null, // Changed to array
         }),
       })
       notification.success("Użytkownik został dodany")
@@ -158,7 +181,7 @@ function UserManagementContent() {
       role: USER_ROLES.OFFICE,
       branches: [],
       status: USER_STATUS.ACTIVE,
-      licenseCategory: "",
+      licenseCategories: [], // Reset to empty array
     })
     setShowAddForm(false)
   }
@@ -499,28 +522,27 @@ function UserManagementContent() {
                       <label key={branch} className="flex items-center space-x-2">
                         <input
                           type="checkbox"
-                          checked={editingUser 
-                            ? (editingUser.branches || []).includes(branch)
-                            : newUser.branches.includes(branch)
+                          checked={
+                            editingUser
+                              ? (editingUser.branches || []).includes(branch)
+                              : newUser.branches.includes(branch)
                           }
                           onChange={(e) => {
-                            const currentBranches = editingUser 
-                              ? (editingUser.branches || [])
-                              : newUser.branches;
-                            
+                            const currentBranches = editingUser ? editingUser.branches || [] : newUser.branches
+
                             if (e.target.checked) {
-                              const newBranches = [...currentBranches, branch];
+                              const newBranches = [...currentBranches, branch]
                               if (editingUser) {
-                                setEditingUser({ ...editingUser, branches: newBranches });
+                                setEditingUser({ ...editingUser, branches: newBranches })
                               } else {
-                                setNewUser({ ...newUser, branches: newBranches });
+                                setNewUser({ ...newUser, branches: newBranches })
                               }
                             } else {
-                              const newBranches = currentBranches.filter(b => b !== branch);
+                              const newBranches = currentBranches.filter((b) => b !== branch)
                               if (editingUser) {
-                                setEditingUser({ ...editingUser, branches: newBranches });
+                                setEditingUser({ ...editingUser, branches: newBranches })
                               } else {
-                                setNewUser({ ...newUser, branches: newBranches });
+                                setNewUser({ ...newUser, branches: newBranches })
                               }
                             }
                           }}
@@ -532,29 +554,48 @@ function UserManagementContent() {
                   </div>
                 </div>
                 {(editingUser ? editingUser.role : newUser.role) === USER_ROLES.INSTRUCTOR && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Kategoria prawa jazdy</label>
-                    <select
-                      value={editingUser ? editingUser.licenseCategory || "" : newUser.licenseCategory}
-                      onChange={(e) =>
-                        editingUser
-                          ? setEditingUser({ ...editingUser, licenseCategory: e.target.value })
-                          : setNewUser({ ...newUser, licenseCategory: e.target.value })
-                      }
-                      className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      required={
-                        editingUser
-                          ? editingUser.role === USER_ROLES.INSTRUCTOR
-                          : newUser.role === USER_ROLES.INSTRUCTOR
-                      }
-                    >
-                      <option value="">Wybierz kategorię</option>
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Kategorie prawa jazdy</label>
+                    <div className="grid grid-cols-4 gap-2 max-h-32 overflow-y-auto border rounded-md p-3">
                       {LICENSE_CATEGORIES.map((category) => (
-                        <option key={category} value={category}>
-                          {category}
-                        </option>
+                        <label key={category} className="flex items-center space-x-2">
+                          <input
+                            type="checkbox"
+                            checked={
+                              editingUser
+                                ? (editingUser.licenseCategories || []).includes(category)
+                                : newUser.licenseCategories.includes(category)
+                            }
+                            onChange={(e) => {
+                              const currentCategories = editingUser
+                                ? editingUser.licenseCategories || []
+                                : newUser.licenseCategories
+
+                              if (e.target.checked) {
+                                const newCategories = [...currentCategories, category]
+                                if (editingUser) {
+                                  setEditingUser({ ...editingUser, licenseCategories: newCategories })
+                                } else {
+                                  setNewUser({ ...newUser, licenseCategories: newCategories })
+                                }
+                              } else {
+                                const newCategories = currentCategories.filter((c) => c !== category)
+                                if (editingUser) {
+                                  setEditingUser({ ...editingUser, licenseCategories: newCategories })
+                                } else {
+                                  setNewUser({ ...newUser, licenseCategories: newCategories })
+                                }
+                              }
+                            }}
+                            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm font-medium">{category}</span>
+                        </label>
                       ))}
-                    </select>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Wybierz wszystkie kategorie, które instruktor może prowadzić
+                    </p>
                   </div>
                 )}
                 <div>
@@ -673,10 +714,9 @@ function UserManagementContent() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{renderRole(user.role)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user.branches && user.branches.length > 0 
+                          {user.branches && user.branches.length > 0
                             ? user.branches.join(", ")
-                            : "Brak przypisanych placówek"
-                          }
+                            : "Brak przypisanych placówek"}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">{renderStatus(user.status)}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -768,10 +808,11 @@ function UserManagementContent() {
                       </div>
                       <div>
                         <div className="text-gray-500">Placówki</div>
-                        <div>{user.branches && user.branches.length > 0 
-                          ? user.branches.join(", ")
-                          : "Brak przypisanych placówek"
-                        }</div>
+                        <div>
+                          {user.branches && user.branches.length > 0
+                            ? user.branches.join(", ")
+                            : "Brak przypisanych placówek"}
+                        </div>
                       </div>
                       <div>
                         <div className="text-gray-500">Rola</div>
