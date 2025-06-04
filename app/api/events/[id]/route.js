@@ -24,6 +24,18 @@ const eventUpdateSchema = z.object({
   instructor_id: z.string().uuid().optional().nullable(),
 })
 
+function isTooLate(eventDateString, now = new Date()) {
+  // dzisiejszy dzień o godzinie 10:00 rano
+  const todayAtTen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0)
+
+  const eventDate = new Date(eventDateString)
+
+  // Zwraca true, jeśli eventDate jest wcześniejszy niż dziś o 10:00 (czyli w przeszłości)
+  return eventDate < todayAtTen
+}
+
+
+
 export async function GET(request, { params }) {
   try {
     const eventId = params.id
@@ -76,6 +88,14 @@ export async function PATCH(request, { params }) {
     const body = await request.json()
     console.log(body)
     const eventData = eventUpdateSchema.parse(body)
+
+    const now = new Date()
+eventData.updated_at = now.toISOString()
+
+// Użyj daty z eventData jeśli jest nadpisana, albo z aktualnego eventu
+const effectiveEventDate = eventData.date || currentEvent.date
+const is_too_late = isTooLate(effectiveEventDate, now)
+eventData.is_too_late = is_too_late
 
     console.log("Event data to update:", eventData)
 

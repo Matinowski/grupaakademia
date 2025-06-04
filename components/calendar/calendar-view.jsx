@@ -121,8 +121,8 @@ export default function Calendar({
   const getEventTypeColor = (event) => {
     const createdAt = new Date(event.created_at)
     const hour = createdAt.getHours()
-
-    if (hour >= 14) {
+    
+    if (event.is_too_late) {
       return "#FBBF24" // amber
     } else if (event.payment_due) {
       return "#FF0000" // Red for payment due

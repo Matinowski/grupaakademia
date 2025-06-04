@@ -6,7 +6,7 @@ import { z } from "zod"
 // Event schema validation
 const eventSchema = z.object({
   title: z.string(),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   date: z.string().refine((date) => !isNaN(Date.parse(date)), { message: "Invalid date format" }),
   start_time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format"),
   end_time: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Invalid time format"),
@@ -14,6 +14,18 @@ const eventSchema = z.object({
   driver_id: z.string().uuid().optional().nullable(),
   instructor_id: z.string().uuid().optional().nullable(),
 })
+
+function isTooLate(eventDateString, now = new Date()) {
+  // dzisiejszy dzień o godzinie 10:00 rano
+  const todayAtTen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0)
+
+  const eventDate = new Date(eventDateString)
+
+  // Zwraca true, jeśli eventDate jest wcześniejszy niż dziś o 10:00 (czyli w przeszłości)
+  return eventDate < todayAtTen
+}
+
+
 
 // Add a query parameter handler for date range filtering
 export async function GET(request) {
@@ -150,7 +162,15 @@ export async function POST(request) {
 
 
     // Create event
-    const { data, error } = await supabaseAdmin.from("events").insert(eventData).select().single()
+    const now = new Date()
+    const is_too_late = isTooLate(eventData.date, now)
+    
+    const { data, error } = await supabaseAdmin.from("events").insert({
+      ...eventData,
+      is_too_late,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    }).select().single()
 
     if (error) {
       console.error("Error creating event:", error)

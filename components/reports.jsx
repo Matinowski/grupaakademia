@@ -42,6 +42,8 @@ export default function BranchReports({
     { id: "zgierz", name: "Zgierz" },
     { id: "motoakademia", name: "Moto-Akademia" },
     { id: "zawodowaakademia", name: "Zawodowa-Akademia" },
+    { id: "budowlanaakademia", name: "Budowlana-Akademia" },
+    { id: "kiso", name: "Kwalifikacje i szkolenia Okresowe" },
   ],
 }) {
   const [reports, setReports] = useState([])

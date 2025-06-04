@@ -214,6 +214,7 @@ export default function DrivingSchoolApp() {
             calendar: event.calendar,
             payment_due: event.payment_due || false,
             created_at: event.created_at,
+            is_too_late: event.is_too_late
           }))
 
           setEvents(formattedEvents)
@@ -278,6 +279,7 @@ export default function DrivingSchoolApp() {
         calendar: event.calendar,
         payment_due: event.payment_due || false,
         created_at: event.created_at,
+        is_too_late: event.is_too_late
       }))
 
       setEvents(formattedEvents)

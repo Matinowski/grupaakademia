@@ -535,7 +535,7 @@ export default function DriverProfiles({ drivers, events }) {
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">Pozostałe Godziny</div>
+                  <div className="text-sm text-gray-500">Liczba Godziny</div>
                   <div>{selectedDriver.remaining_hours}</div>
                 </div>
               </div>
@@ -677,7 +677,6 @@ export default function DriverProfiles({ drivers, events }) {
                     value={editedDriver.email}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
                   />
                 </div>
 
@@ -689,11 +688,19 @@ export default function DriverProfiles({ drivers, events }) {
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="A">A - Motocykl</option>
-                    <option value="B">B - Samochód osobowy</option>
-                    <option value="C">C - Samochód ciężarowy</option>
-                    <option value="D">D - Autobus</option>
-                    <option value="E">E - Przyczepa</option>
+                    <option value="A">A </option>
+                    <option value="A2">A2</option>
+                    <option value="A1">A1</option>
+                    <option value="AM">AM</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="C+E">C + E</option>
+                    <option value="C&C+E">C & C + E</option>
+                    <option value="KWP">KWP</option>
+                    <option value="KU">KU</option>
+                    <option value="KUP">KUP</option>
+                    <option value="D">D</option>
+                    <option value="Wózek">Wózek Widłowy</option>
                   </select>
                 </div>
 
@@ -747,7 +754,7 @@ export default function DriverProfiles({ drivers, events }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pozostałe Godziny</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Liczba Godziny</label>
                   <input
                     type="number"
                     name="remaining_hours"
@@ -968,7 +975,7 @@ export default function DriverProfiles({ drivers, events }) {
                     value={newDriver.email}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    required
+                    
                   />
                 </div>
 
@@ -980,11 +987,19 @@ export default function DriverProfiles({ drivers, events }) {
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    <option value="A">A - Motocykl</option>
-                    <option value="B">B - Samochód osobowy</option>
-                    <option value="C">C - Samochód ciężarowy</option>
-                    <option value="D">D - Autobus</option>
-                    <option value="E">E - Przyczepa</option>
+                    <option value="A">A </option>
+                    <option value="A2">A2</option>
+                    <option value="A1">A1</option>
+                    <option value="AM">AM</option>
+                    <option value="B">B</option>
+                    <option value="C">C</option>
+                    <option value="C+E">C + E</option>
+                    <option value="C&C+E">C & C + E</option>
+                    <option value="KWP">KWP</option>
+                    <option value="KU">KU</option>
+                    <option value="KUP">KUP</option>
+                    <option value="D">D</option>
+                    <option value="Wózek">Wózek Widłowy</option>
                   </select>
                 </div>
 
@@ -1039,7 +1054,7 @@ export default function DriverProfiles({ drivers, events }) {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pozostałe Godziny</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Liczba Godziny</label>
                   <input
                     type="number"
                     name="remaining_hours"
