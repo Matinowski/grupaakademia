@@ -280,19 +280,7 @@ export default function BranchReports({
   const renderBranchTiles = () => {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
-        {/* Kafelek dla raportów ogólnych */}
-        <div
-          onClick={() => setSelectedBranch("general")}
-          className={`bg-white rounded-lg shadow-sm p-6 cursor-pointer transition-all hover:shadow-md ${
-            selectedBranch === "general" ? "ring-2 ring-blue-500" : ""
-          }`}
-        >
-          <div className="flex items-center justify-center mb-3">
-            <Building className="w-10 h-10 text-blue-500" />
-          </div>
-          <h3 className="text-lg font-semibold text-center">Ogólne</h3>
-          <p className="text-sm text-gray-500 text-center mt-1">Raporty dotyczące wszystkich placówek</p>
-        </div>
+
 
         {/* Kafelki dla poszczególnych placówek */}
         {branches.map((branch) => (

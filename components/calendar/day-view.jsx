@@ -181,21 +181,21 @@ export default function DayView({
   const getEventTypeColor = (event) => {
     const createdAt = new Date(event.created_at)
     const hour = createdAt.getHours()
-
-    if (hour >= 14) {
-      return "#FBBF24"
+    
+    if (event.is_too_late) {
+      return "#FBBF24" // amber
     } else if (event.payment_due) {
-      return "#FF0000"
+      return "#FF0000" // Red for payment due
     } else {
       switch (event.lessonType) {
         case "practical":
-          return "#10B981"
+          return "#10B981" // green
         case "theory":
-          return "#6366F1"
+          return "#6366F1" // indigo
         case "exam":
-          return "#F43F5E"
+          return "#F43F5E" // rose
         default:
-          return event.color || "#4285F4"
+          return event.color || "#4285F4" // blue
       }
     }
   }

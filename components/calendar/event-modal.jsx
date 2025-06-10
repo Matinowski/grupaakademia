@@ -28,7 +28,7 @@ export default function EventModal({
     instructor_id: null,
   })
   const [searchQuery, setSearchQuery] = useState("")
-  const [activeTab, setActiveTab] = useState("basic")
+  const [activeTab, setActiveTab] = useState("people")
   const [showDriverSearch, setShowDriverSearch] = useState(false)
   const [showInstructorSearch, setShowInstructorSearch] = useState(false)
 
@@ -197,16 +197,7 @@ export default function EventModal({
         <div className="w-full">
           <div className="px-4 pt-4">
             <div className="grid w-full grid-cols-3 bg-gray-100 rounded-md p-1">
-              <button
-                className={classNames(
-                  "flex items-center justify-center py-2 px-3 text-sm rounded-md transition-colors",
-                  activeTab === "basic" ? "bg-white shadow-sm" : "hover:bg-gray-200",
-                )}
-                onClick={() => setActiveTab("basic")}
-              >
-                <Calendar className="w-4 h-4 mr-2" />
-                Dane podstawowe
-              </button>
+              
               <button
                 className={classNames(
                   "flex items-center justify-center py-2 px-3 text-sm rounded-md transition-colors",
@@ -216,6 +207,16 @@ export default function EventModal({
               >
                 <User className="w-4 h-4 mr-2" />
                 Uczestnicy
+              </button>
+              <button
+                className={classNames(
+                  "flex items-center justify-center py-2 px-3 text-sm rounded-md transition-colors",
+                  activeTab === "basic" ? "bg-white shadow-sm" : "hover:bg-gray-200",
+                )}
+                onClick={() => setActiveTab("basic")}
+              >
+                <Calendar className="w-4 h-4 mr-2" />
+                Dane podstawowe
               </button>
               <button
                 className={classNames(

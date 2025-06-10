@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, Filter, User, Bike, Car, Truck, ChevronDown, ChevronRight } from "lucide-react"
+// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Prosty formatter daty
 function formatDate(dateString) {
@@ -173,7 +174,7 @@ export function ExcelView() {
       {/* Nagłówek z datami i filtrem */}
       <div className="sticky top-0 z-10 bg-white pt-2 pb-4 border-b border-gray-200 shadow-sm p-4 rounded-md">
         <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
-          {/* Selektor dat */}
+          {/* Selektor dat - zmieniony na dropdown */}
           <div className="w-full md:w-auto">
             <div className="flex items-center gap-2 mb-3">
               <Calendar className="h-5 w-5 text-gray-700" />
@@ -183,21 +184,20 @@ export function ExcelView() {
               </span>
             </div>
 
-            <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
+            <select
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="w-full md:w-[250px] px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-white text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="" disabled>
+                Wybierz datę
+              </option>
               {dates.map((date) => (
-                <button
-                  key={date}
-                  onClick={() => setSelectedDate(date)}
-                  className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-colors ${
-                    selectedDate === date
-                      ? "bg-blue-600 text-white shadow-sm"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
+                <option key={date} value={date}>
                   {formatDate(date)}
-                </button>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Filtr placówek */}
@@ -260,7 +260,7 @@ export function ExcelView() {
             const hasData = Object.keys(academyData).length > 0
             const isAcademyExpanded = expandedAcademies[selectedDate]?.[academyKey]
 
-            if (!hasData) return null
+            // if (!hasData) return null
 
             const IconComponent = config.icon
             const academyLicenseTypes = Object.keys(academyData).sort()
@@ -319,7 +319,7 @@ export function ExcelView() {
                             <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-800 bg-gray-200 min-w-[150px]">
                               KATEGORIA
                             </th>
-                            {filteredBranches.map((branch, index) => {
+                            {branches.map((branch, index) => {
                               // Kolory dla nagłówków placówek
                               const branchColors = [
                                 "bg-blue-50 text-blue-800",
@@ -395,8 +395,11 @@ export function ExcelView() {
                                 </td>
 
                                 {/* Kolumny z kursantami dla każdej placówki */}
-                                {filteredBranches.map((branch, colIndex) => {
-                                  const branchDrivers = academyData[licenseType]?.[branch] || []
+                                {branches.map((branch, colIndex) => {
+                                  let branchDrivers = academyData[licenseType]?.[branch] || []
+                                  if (filterBranch !== "all" && branch !== filterBranch) {
+                                    branchDrivers = []
+                                  }
 
                                   // Kolory dla komórek
                                   const cellColors = [

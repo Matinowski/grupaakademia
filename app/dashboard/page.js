@@ -139,7 +139,7 @@ export default function DrivingSchoolApp() {
         },
         async (payload) => {
           // Fetch updated events
-		  console.log("Event change detected:", payload)
+          console.log("Event change detected:", payload)
           fetch("/api/events")
             .then((res) => res.json())
             .then((data) => {
@@ -176,7 +176,13 @@ export default function DrivingSchoolApp() {
           }
           console.log("Initial data loaded:", data)
           setInstructors(data.instructors || [])
-          setCalendars(data.calendars || [])
+
+          // Ustaw wszystkie kalendarze jako niewidoczne domyślnie
+          const calendarsWithDefaultVisibility = (data.calendars || []).map((calendar) => ({
+            ...calendar,
+            visible: false,
+          }))
+          setCalendars(calendarsWithDefaultVisibility)
         })
         .catch((error) => {
           hideLoading()
@@ -214,7 +220,7 @@ export default function DrivingSchoolApp() {
             calendar: event.calendar,
             payment_due: event.payment_due || false,
             created_at: event.created_at,
-            is_too_late: event.is_too_late
+            is_too_late: event.is_too_late,
           }))
 
           setEvents(formattedEvents)
@@ -279,7 +285,7 @@ export default function DrivingSchoolApp() {
         calendar: event.calendar,
         payment_due: event.payment_due || false,
         created_at: event.created_at,
-        is_too_late: event.is_too_late
+        is_too_late: event.is_too_late,
       }))
 
       setEvents(formattedEvents)
@@ -306,8 +312,8 @@ export default function DrivingSchoolApp() {
 
   // Update the getFilteredEvents function to filter by instructors and drivers
   const getFilteredEvents = () => {
-    const visibleCalendarIds = calendars.filter((cal) => cal.visible).map((cal) => cal.id)
-    // Get arrays of selected instructor and driver IDs
+    // Get arrays of selected calendar, instructor and driver IDs
+    const selectedCalendarIds = calendars.filter((cal) => cal.visible).map((cal) => cal.id)
     const selectedinstructor_ids = Object.entries(selectedInstructors)
       .filter(([_, isSelected]) => isSelected)
       .map(([id, _]) => id)
@@ -317,9 +323,9 @@ export default function DrivingSchoolApp() {
       .map(([id, _]) => id)
 
     return events.filter((event) => {
-      // Filter by calendar visibility
-
-      if (!visibleCalendarIds.includes(event.calendar_id)) {
+      // NEW LOGIC: If no calendars are selected, show all events
+      // If calendars are selected, only show events from those calendars
+      if (selectedCalendarIds.length > 0 && !selectedCalendarIds.includes(event.calendar_id)) {
         return false
       }
 
@@ -433,7 +439,7 @@ export default function DrivingSchoolApp() {
         body: JSON.stringify({
           name: newCalendar.name,
           color: newCalendar.color,
-          visible: true,
+          visible: false, // Zmienione z true na false
         }),
       })
 

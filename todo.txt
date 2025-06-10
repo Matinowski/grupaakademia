@@ -1,19 +1,4 @@
-Szczegoly opcjonalne
-
-
-
-
-Odznaczenie dodatkowych kalenarzow domylsnei
-
-
-Zmiany w kalendarzach w przeszlosci 10:00
-
-
-
-Kursanci email opcionalnie
-
-
-Kategorie:
-A, A1, A2, AM, B, B + E, C, C+ E, D, KWP
-
-liczba godzin zamiast pozostale
+1
+2
+4
+9

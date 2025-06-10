@@ -221,11 +221,11 @@ export default function WeekView({
     }
   }
 
-  const getEventTypeColor = (event) => {
+   const getEventTypeColor = (event) => {
     const createdAt = new Date(event.created_at)
     const hour = createdAt.getHours()
-
-    if (hour >= 14) {
+    
+    if (event.is_too_late) {
       return "#FBBF24" // amber
     } else if (event.payment_due) {
       return "#FF0000" // Red for payment due
@@ -458,15 +458,13 @@ export default function WeekView({
                                 <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
                                 <span>{eventInfo.time}</span>
                               </div>
+                              
 
                               {/* Show additional info on hover or if event is tall enough */}
                               {(hoveredEvent === event.id ||
                                 getEventStyle(event, layout).height.replace("px", "") > 60) && (
                                 <>
-                                  <div className="flex items-center text-xs opacity-90">
-                                    <User className="w-3 h-3 mr-1 flex-shrink-0" />
-                                    <span className="truncate">{eventInfo.studentName}</span>
-                                  </div>
+                                  
                                   <div className="flex items-center justify-between text-xs opacity-90">
                                     <div className="flex items-center">
                                       <Car className="w-3 h-3 mr-1 flex-shrink-0" />

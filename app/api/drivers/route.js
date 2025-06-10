@@ -6,20 +6,20 @@ export async function GET() {
     const { supabaseAdmin } = await import("@/lib/supabase")
 
     // Pobieramy wszystkich kierowców z ich datami rozpoczęcia, placówkami i typami prawa jazdy
-    const { data: drivers, error } = await supabaseAdmin
-      .from("drivers")
-      .select(`
-        id,
-        name,
-        phone,
-        license_type,
-        remaining_hours,
-        completed_hours,
-        start_date,
-        branch
-      `)
-      .order("start_date", { ascending: false })
-
+const { data: drivers, error } = await supabaseAdmin
+  .from("drivers")
+  .select(`
+    id,
+    name,
+    phone,
+    license_type,
+    remaining_hours,
+    completed_hours,
+    start_date,
+    branch
+  `)
+  .eq("course_type", "basic")
+  .order("start_date", { ascending: false });
     if (error || !drivers) {
       console.log(error)
       return NextResponse.json({ drivers: null, message: "Błąd pobierania danych kierowców" }, { status: 500 })

@@ -32,10 +32,7 @@ const branches = [
   "Górna",
   "Dąbrowa",
   "Retkinia",
-  "Moto-akademia",
-  "Zawodowa-Akademia",
-  "Budowlana-Akademia",
-  "Kwalifikacje i szkolenia Okresowe",
+  "Centrum",
 ]
 
 export default function DriverProfiles({ drivers, events }) {
@@ -573,13 +570,13 @@ export default function DriverProfiles({ drivers, events }) {
                 <div
                   className="bg-blue-600 h-2.5 rounded-full"
                   style={{
-                    width: `${(selectedDriver.completed_hours / (selectedDriver.completed_hours + selectedDriver.remaining_hours)) * 100}%`,
+                    width: `${(selectedDriver.completed_hours /  selectedDriver.remaining_hours) * 100}%`,
                   }}
                 ></div>
               </div>
               <div className="text-sm text-gray-500 mt-1">
                 {Math.round(
-                  (selectedDriver.completed_hours / (selectedDriver.completed_hours + selectedDriver.remaining_hours)) *
+                 (selectedDriver.completed_hours /  selectedDriver.remaining_hours) *
                     100,
                 )}
                 % ukończone
@@ -647,7 +644,7 @@ export default function DriverProfiles({ drivers, events }) {
                           {formatDate(lesson.date)} o {lesson.start_time}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {calculateDuration(lesson.start_time, lesson.end_time)} godzin z{" "}
+                          {Number(calculateDuration(lesson.start_time, lesson.end_time))} godzin z { lesson.instructor.name + " " + lesson.instructor.surname}
                         </div>
                       </div>
                     </div>
