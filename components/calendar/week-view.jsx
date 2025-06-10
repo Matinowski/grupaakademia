@@ -455,9 +455,10 @@ export default function WeekView({
 
                               {/* Always show time */}
                               <div className="flex items-center text-xs opacity-90">
-                                <Clock className="w-3 h-3 mr-1 flex-shrink-0" />
-                                <span>{eventInfo.time}</span>
+                                <User className="w-3 h-3 mr-0.5 flex-shrink-0" />
+                                <span>{eventInfo.studentName}</span>
                               </div>
+
                               
 
                               {/* Show additional info on hover or if event is tall enough */}
