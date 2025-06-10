@@ -783,7 +783,7 @@ export default function DriverProfiles({ drivers, events }) {
                 <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
                 <select
-                  value={branchFilter}
+                  value={editedDriver.branch || branchFilter}
                   onChange={(e) => setBranchFilter(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
@@ -1100,7 +1100,7 @@ export default function DriverProfiles({ drivers, events }) {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
                 <select
-                  value={branchFilter}
+                  value={editedDriver.branch || branchFilter}
                   onChange={(e) => setBranchFilter(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >

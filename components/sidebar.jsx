@@ -63,7 +63,7 @@ export default function Sidebar({
   { id: "users", name: "Zarządzanie kontami", icon: User },
 ]
 
-    } else if(user && user.role === "instructor") { 
+    } else if(user && user.role === "instruktor") { 
       navigationItems = [
         { id: "calendar", name: "Kalendarz", icon: Calendar },
       ]
@@ -255,7 +255,8 @@ export default function Sidebar({
 
             {/* Sekcja instruktorów */}
             <div className="mb-4">
-              <button
+              {user?.role !== "instruktor" ? (
+                <button
                 className="flex items-center justify-between w-full text-left mb-2"
                 onClick={() => toggleSection("instructors")}
               >
@@ -266,6 +267,7 @@ export default function Sidebar({
                   <ChevronRight className="w-4 h-4 text-gray-500" />
                 )}
               </button>
+              ) : null}
 
               {expanded.instructors && (
                 <div className="ml-2 space-y-2">

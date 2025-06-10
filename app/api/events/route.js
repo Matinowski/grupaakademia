@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
+import { cookies } from "next/headers"
 
 import { z } from "zod"
 
@@ -29,30 +30,62 @@ function isTooLate(eventDateString, now = new Date()) {
 
 // Add a query parameter handler for date range filtering
 export async function GET(request) {
+  const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session-token")
+      if (!sessionToken) {
+        return NextResponse.json({ user: null }, { status: 401 })
+      }
+    
+      const { data: session, error: sessionError } = await supabaseAdmin
+        .from("sessions")
+        .select("user_id, expires_at")
+        .eq("session_token", sessionToken.value)
+        .single()
+    
+      if (sessionError || !session || new Date(session.expires_at) < new Date()) {
+        return NextResponse.json({ user: null }, { status: 401 })
+      }
+    
+      const { data: user, error: userError } = await supabaseAdmin
+        .from("users")
+        .select("role")
+        .eq("id", session.user_id)
+        .single()
+    
+      if (userError || !user) {
+        return NextResponse.json({ user: null, test:"asd" }, { status: 401 })
+      }
+
+
   try {
     let query = supabaseAdmin.from("events").select(`
-      *,
-      driver:drivers (
-        id,
-        name,
-        email,
-        phone,
-        completed_hours,
-        total_paid
-      ),
-      instructor:users (
-        id,
-        name,
-        surname,
-        email,
-        phone
-      ),
-      calendar:calendars (
-        id,
-        name,
-        color
-      )
-    `)
+  *,
+  driver:drivers (
+    id,
+    name,
+    email,
+    phone,
+    completed_hours,
+    total_paid
+  ),
+  instructor:users (
+    id,
+    name,
+    surname,
+    email,
+    phone
+  ),
+  calendar:calendars (
+    id,
+    name,
+    color
+  )
+`)
+
+// Jeśli użytkownik jest instruktorem, ogranicz zapytanie do jego eventów
+if (user.role === "instruktor") {
+  query = query.eq("instructor_id", session.user_id)
+}
 
     const url = new URL(request.url)
     const startDate = url.searchParams.get("start_date")
