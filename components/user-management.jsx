@@ -303,7 +303,7 @@ function UserManagementContent() {
       const response = await fetch("/api/users/admin/resetpassword", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: userId }),
+        body: JSON.stringify({ email: userId }),
       })
 
       const result = await response.json()
@@ -741,7 +741,7 @@ function UserManagementContent() {
                                     `Czy na pewno chcesz zresetować hasło dla ${user.name} ${user.surname}?`,
                                   )
                                 ) {
-                                  handleResetPassword(user.id)
+                                  handleResetPassword(user.email)
                                 }
                               }}
                               className="p-1 text-gray-500 hover:bg-gray-100 rounded-full"

@@ -12,7 +12,7 @@ export async function POST(req) {
 
   const { error } = await supabaseAdmin
     .from("users")
-    .update({ password: passwordHash })
+    .update({ password: passwordHash, needPasswordReset: true })
     .eq("email", email)
 
   if (error) {
