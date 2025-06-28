@@ -187,16 +187,7 @@ export default function DayView({
     } else if (event.payment_due) {
       return "#FF0000" // Red for payment due
     } else {
-      switch (event.lessonType) {
-        case "practical":
-          return "#10B981" // green
-        case "theory":
-          return "#6366F1" // indigo
-        case "exam":
-          return "#F43F5E" // rose
-        default:
-          return event.color || "#4285F4" // blue
-      }
+      return event.calendar.color || "#222222" // blue
     }
   }
 

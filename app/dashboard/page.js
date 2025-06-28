@@ -31,7 +31,7 @@ export default function DrivingSchoolApp() {
 
   // State variables
   const [currentDate, setCurrentDate] = useState(new Date())
-  const [view, setView] = useState("month") // 'month', 'week', or 'day'
+  const [view, setView] = useState("week") // 'month', 'week', or 'day'
   const [activeSection, setActiveSection] = useState("calendar")
   const [isLoading, setIsLoading] = useState(true)
   const [userRole, setUserRole] = useState("admin") // 'admin', 'instructor', or 'driver'

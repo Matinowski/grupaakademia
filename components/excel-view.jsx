@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { Calendar, Filter, User, Bike, Car, Truck, ChevronDown, ChevronRight } from "lucide-react"
-// import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 // Prosty formatter daty
 function formatDate(dateString) {
@@ -35,6 +34,24 @@ function categorizeAcademy(licenseType) {
   return "auto"
 }
 
+// Funkcja zwracająca kolor dla kategorii
+function getCategoryColor(licenseType) {
+  if (licenseType.startsWith("A")) {
+    return "bg-red-100 text-red-800 border-red-200"
+  } else if (licenseType.startsWith("B")) {
+    return "bg-blue-100 text-blue-800 border-blue-200"
+  } else if (licenseType.startsWith("C")) {
+    return "bg-green-100 text-green-800 border-green-200"
+  } else if (licenseType.startsWith("D")) {
+    return "bg-purple-100 text-purple-800 border-purple-200"
+  } else if (licenseType.startsWith("E")) {
+    return "bg-amber-100 text-amber-800 border-amber-200"
+  } else if (licenseType.startsWith("T")) {
+    return "bg-cyan-100 text-cyan-800 border-cyan-200"
+  }
+  return "bg-gray-100 text-gray-800 border-gray-200"
+}
+
 // Główny komponent dashboardu
 export function ExcelView() {
   const [loading, setLoading] = useState(true)
@@ -52,7 +69,6 @@ export function ExcelView() {
     async function fetchDrivers() {
       try {
         setLoading(true)
-
         // Pobieranie danych z API
         const response = await fetch("/api/drivers")
         const data = await response.json()
@@ -68,7 +84,6 @@ export function ExcelView() {
         const uniqueDates = [...new Set(driversData.map((driver) => driver.start_date))].sort(
           (a, b) => new Date(b).getTime() - new Date(a).getTime(),
         )
-
         const uniqueLicenseTypes = [...new Set(driversData.map((driver) => driver.license_type))]
         const uniqueBranches = [...new Set(driversData.map((driver) => driver.branch))]
 
@@ -80,28 +95,22 @@ export function ExcelView() {
           setSelectedDate(uniqueDates[0])
         }
 
-        // Grupowanie kierowców według daty, akademii, typu prawa jazdy i placówki
+        // Nowe grupowanie - według daty, akademii i placówki (bez podziału na kategorie)
         const grouped = {}
-
         driversData.forEach((driver) => {
           const date = driver.start_date
-          const licenseType = driver.license_type
           const branch = driver.branch
-          const academy = categorizeAcademy(licenseType)
+          const academy = categorizeAcademy(driver.license_type)
 
           if (!grouped[date]) {
             grouped[date] = { moto: {}, auto: {}, zawodowa: {} }
           }
 
-          if (!grouped[date][academy][licenseType]) {
-            grouped[date][academy][licenseType] = {}
+          if (!grouped[date][academy][branch]) {
+            grouped[date][academy][branch] = []
           }
 
-          if (!grouped[date][academy][licenseType][branch]) {
-            grouped[date][academy][licenseType][branch] = []
-          }
-
-          grouped[date][academy][licenseType][branch].push(driver)
+          grouped[date][academy][branch].push(driver)
         })
 
         setGroupedDrivers(grouped)
@@ -136,8 +145,6 @@ export function ExcelView() {
     }))
   }
 
-  const filteredBranches = filterBranch === "all" ? branches : branches.filter((branch) => branch === filterBranch)
-
   const academyConfig = {
     moto: {
       name: "MOTOAKADEMIA",
@@ -170,11 +177,11 @@ export function ExcelView() {
   }
 
   return (
-    <div className="space-y-6 bg-gray-50 min-h-screen p-4">
+    <div className="space-y-6 bg-gray-50 min-h-screen p-4 overflow-y-scroll">
       {/* Nagłówek z datami i filtrem */}
       <div className="sticky top-0 z-10 bg-white pt-2 pb-4 border-b border-gray-200 shadow-sm p-4 rounded-md">
         <div className="flex flex-col md:flex-row justify-between gap-4 items-start md:items-center">
-          {/* Selektor dat - zmieniony na dropdown */}
+          {/* Selektor dat */}
           <div className="w-full md:w-auto">
             <div className="flex items-center gap-2 mb-3">
               <Calendar className="h-5 w-5 text-gray-700" />
@@ -183,7 +190,6 @@ export function ExcelView() {
                 ({dates.length} {dates.length === 1 ? "data" : "daty"})
               </span>
             </div>
-
             <select
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
@@ -214,7 +220,6 @@ export function ExcelView() {
                 <span>{filterBranch === "all" ? "Wszystkie placówki" : filterBranch}</span>
                 <ChevronDown className="h-4 w-4 text-gray-500" />
               </button>
-
               {isFilterOpen && (
                 <div className="absolute right-0 mt-1 w-full md:w-[200px] bg-white border border-gray-200 rounded-md shadow-lg z-20">
                   <div className="py-1">
@@ -260,10 +265,7 @@ export function ExcelView() {
             const hasData = Object.keys(academyData).length > 0
             const isAcademyExpanded = expandedAcademies[selectedDate]?.[academyKey]
 
-            // if (!hasData) return null
-
             const IconComponent = config.icon
-            const academyLicenseTypes = Object.keys(academyData).sort()
 
             return (
               <motion.div
@@ -316,9 +318,6 @@ export function ExcelView() {
                         {/* Nagłówek tabeli z placówkami */}
                         <thead>
                           <tr className="bg-gray-100 border-b-2 border-gray-300">
-                            <th className="border border-gray-300 px-4 py-3 text-left font-bold text-gray-800 bg-gray-200 min-w-[150px]">
-                              KATEGORIA
-                            </th>
                             {branches.map((branch, index) => {
                               // Kolory dla nagłówków placówek
                               const branchColors = [
@@ -336,7 +335,7 @@ export function ExcelView() {
                               return (
                                 <th
                                   key={branch}
-                                  className={`border border-gray-300 px-3 py-3 text-center font-bold ${colorClass} min-w-[180px]`}
+                                  className={`border border-gray-300 px-3 py-3 text-center font-bold ${colorClass} min-w-[250px]`}
                                 >
                                   {branch}
                                 </th>
@@ -345,110 +344,81 @@ export function ExcelView() {
                           </tr>
                         </thead>
 
-                        {/* Ciało tabeli z kategoriami i kursantami */}
+                        {/* Ciało tabeli z kursantami */}
                         <tbody>
-                          {academyLicenseTypes.map((licenseType, rowIndex) => {
-                            // Kolory dla kategorii
-                            let categoryBg = "bg-gray-50"
-                            let categoryText = "text-gray-800"
+                          <tr className="border-b border-gray-200">
+                            {branches.map((branch, colIndex) => {
+                              let branchDrivers = academyData[branch] || []
+                              if (filterBranch !== "all" && branch !== filterBranch) {
+                                branchDrivers = []
+                              }
 
-                            if (licenseType.startsWith("A")) {
-                              categoryBg = "bg-red-50"
-                              categoryText = "text-red-800"
-                            } else if (licenseType.startsWith("B")) {
-                              categoryBg = "bg-blue-50"
-                              categoryText = "text-blue-800"
-                            } else if (licenseType.startsWith("C")) {
-                              categoryBg = "bg-green-50"
-                              categoryText = "text-green-800"
-                            } else if (licenseType.startsWith("D")) {
-                              categoryBg = "bg-purple-50"
-                              categoryText = "text-purple-800"
-                            } else if (licenseType.startsWith("E")) {
-                              categoryBg = "bg-amber-50"
-                              categoryText = "text-amber-800"
-                            } else if (licenseType.startsWith("T")) {
-                              categoryBg = "bg-cyan-50"
-                              categoryText = "text-cyan-800"
-                            }
+                              // Kolory dla komórek
+                              const cellColors = [
+                                "bg-blue-25",
+                                "bg-green-25",
+                                "bg-purple-25",
+                                "bg-amber-25",
+                                "bg-rose-25",
+                                "bg-cyan-25",
+                                "bg-indigo-25",
+                                "bg-emerald-25",
+                              ]
+                              const cellBg = cellColors[colIndex % cellColors.length] || "bg-white"
 
-                            return (
-                              <motion.tr
-                                key={licenseType}
-                                className="border-b border-gray-200 hover:bg-gray-50"
-                                initial={{ opacity: 0, y: 10 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ duration: 0.2, delay: rowIndex * 0.05 }}
-                              >
-                                {/* Kolumna z kategorią */}
+                              return (
                                 <td
-                                  className={`border border-gray-300 px-4 py-4 font-bold ${categoryBg} ${categoryText}`}
+                                  key={branch}
+                                  className={`border border-gray-300 px-2 py-2 align-top ${cellBg} min-h-[100px]`}
                                 >
-                                  <div className="flex items-center gap-2">
-                                    <div
-                                      className={`w-8 h-8 rounded-full flex items-center justify-center ${config.color} text-xs font-bold`}
-                                    >
-                                      {licenseType}
-                                    </div>
-                                    <span>Kategoria {licenseType}</span>
-                                  </div>
-                                </td>
+                                  {branchDrivers.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {branchDrivers.map((driver, driverIndex) => (
+                                        <motion.div
+                                          key={driver.id}
+                                          className="flex items-start gap-3 p-3 bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow"
+                                          initial={{ opacity: 0, scale: 0.9 }}
+                                          animate={{ opacity: 1, scale: 1 }}
+                                          transition={{
+                                            duration: 0.2,
+                                            delay: driverIndex * 0.02,
+                                          }}
+                                          whileHover={{ scale: 1.02 }}
+                                        >
+                                          {/* Numer porządkowy */}
+                                          <div className="flex-shrink-0 w-6 h-6 rounded-full bg-gray-600 text-white flex items-center justify-center text-xs font-bold mt-0.5">
+                                            {driverIndex + 1}
+                                          </div>
 
-                                {/* Kolumny z kursantami dla każdej placówki */}
-                                {branches.map((branch, colIndex) => {
-                                  let branchDrivers = academyData[licenseType]?.[branch] || []
-                                  if (filterBranch !== "all" && branch !== filterBranch) {
-                                    branchDrivers = []
-                                  }
-
-                                  // Kolory dla komórek
-                                  const cellColors = [
-                                    "bg-blue-25",
-                                    "bg-green-25",
-                                    "bg-purple-25",
-                                    "bg-amber-25",
-                                    "bg-rose-25",
-                                    "bg-cyan-25",
-                                    "bg-indigo-25",
-                                    "bg-emerald-25",
-                                  ]
-                                  const cellBg = cellColors[colIndex % cellColors.length] || "bg-white"
-
-                                  return (
-                                    <td
-                                      key={branch}
-                                      className={`border border-gray-300 px-2 py-2 align-top ${cellBg} min-h-[60px]`}
-                                    >
-                                      {branchDrivers.length > 0 ? (
-                                        <div className="space-y-1">
-                                          {branchDrivers.map((driver, driverIndex) => (
-                                            <motion.div
-                                              key={driver.id}
-                                              className="flex items-center gap-2 p-2 bg-white rounded border border-gray-200 shadow-sm hover:shadow-md transition-shadow text-sm"
-                                              initial={{ opacity: 0, scale: 0.9 }}
-                                              animate={{ opacity: 1, scale: 1 }}
-                                              transition={{
-                                                duration: 0.2,
-                                                delay: rowIndex * 0.05 + driverIndex * 0.02,
-                                              }}
-                                              whileHover={{ scale: 1.02 }}
-                                            >
-                                              <div className="w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                                <User className="h-3 w-3 text-gray-600" />
+                                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                                              <User className="h-4 w-4 text-gray-600" />
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                              <div className="font-medium text-gray-800 truncate text-sm">
+                                                {driver.name}
                                               </div>
-                                              <span className="font-medium text-gray-800 truncate">{driver.name}</span>
-                                            </motion.div>
-                                          ))}
-                                        </div>
-                                      ) : (
-                                        <div className="text-center text-gray-400 text-sm py-4">Brak kursantów</div>
-                                      )}
-                                    </td>
-                                  )
-                                })}
-                              </motion.tr>
-                            )
-                          })}
+                                              <div className="mt-1">
+                                                <span
+                                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getCategoryColor(
+                                                    driver.license_type,
+                                                  )}`}
+                                                >
+                                                  {driver.license_type}
+                                                </span>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </motion.div>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="text-center text-gray-400 text-sm py-8">Brak kursantów</div>
+                                  )}
+                                </td>
+                              )
+                            })}
+                          </tr>
                         </tbody>
                       </table>
                     </motion.div>
@@ -490,7 +460,6 @@ function DashboardSkeleton() {
           <div className="h-10 w-24 bg-gray-200 rounded-md"></div>
         </div>
       </div>
-
       <div className="space-y-8 animate-pulse">
         {[1, 2, 3].map((i) => (
           <div key={i} className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">

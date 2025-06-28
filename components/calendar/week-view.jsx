@@ -23,13 +23,15 @@ export default function WeekView({
     return classes.filter(Boolean).join(" ")
   }
 
-  // Get start of week (Sunday)
-  const getStartOfWeek = (date) => {
-    const startOfWeek = new Date(date)
-    startOfWeek.setDate(date.getDate() - date.getDay())
-    startOfWeek.setHours(0, 0, 0, 0)
-    return startOfWeek
-  }
+ // Get start of week (Monday)
+const getStartOfWeek = (date) => {
+  const startOfWeek = new Date(date)
+  const day = date.getDay()
+  const diff = (day === 0 ? -6 : 1 - day) // if Sunday (0), go back 6 days; else back to Monday
+  startOfWeek.setDate(date.getDate() + diff)
+  startOfWeek.setHours(0, 0, 0, 0)
+  return startOfWeek
+}
 
   // Get days of the week
   const getDaysOfWeek = (startDate) => {
@@ -230,16 +232,7 @@ export default function WeekView({
     } else if (event.payment_due) {
       return "#FF0000" // Red for payment due
     } else {
-      switch (event.lessonType) {
-        case "practical":
-          return "#10B981" // green
-        case "theory":
-          return "#6366F1" // indigo
-        case "exam":
-          return "#F43F5E" // rose
-        default:
-          return event.color || "#4285F4" // blue
-      }
+      return event.calendar.color || "#222222" // blue
     }
   }
 

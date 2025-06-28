@@ -126,7 +126,7 @@ export default function EventModal({
     setEventData({
       ...eventData,
       driver_id: driver.id,
-      title: eventData.title || `Lekcja jazdy z ${driver.name}`,
+      title: eventData.title || ``,
     })
     setShowDriverSearch(false)
     setSearchQuery("")
