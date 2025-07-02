@@ -60,7 +60,7 @@ function UserManagementContent() {
   })
 
   // Lista placówek
-  const branches =["Widzew","Zgierz","Dąbrowa","Budowlana-Akademia","Moto-akademia","Kwalifikacje i szkolenia Okresowe","Zawodowa-Akademia","Retkinia","Górna","Bałuty", "Centrum"]
+  const branches =["Widzew","Zgierz","Dąbrowa","Budowlana-Akademia","Moto-akademia","Kwalifikacje i szkolenia Okresowe","Zawodowa-Akademia","Retkinia","Górna","Bałuty", "Centrum", "Ozorków"]
   const notification = useNotification()
 
   // Przykładowe dane użytkowników

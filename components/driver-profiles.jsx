@@ -23,6 +23,7 @@ import { useRouter } from "next/navigation"
 import PaymentForm from "@/components/driverProfiels/payment-form"
 import { useAuth } from "@/hooks/use-auth"
 import PdfViewer from "@/components/ui/pdf-viewer"
+import { number } from "zod"
 
 
 const branches = [
@@ -33,6 +34,7 @@ const branches = [
   "Dąbrowa",
   "Retkinia",
   "Centrum",
+  "Ozorków",
 ]
 
 export default function DriverProfiles({ drivers, events }) {
@@ -44,22 +46,23 @@ export default function DriverProfiles({ drivers, events }) {
   const [selectedDriver, setSelectedDriver] = useState(null)
   const [showAddDriverForm, setShowAddDriverForm] = useState(false)
   const [editMode, setEditMode] = useState(false)
-  const [newDriver, setNewDriver] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    license_type: "B",
-    course_type: "basic", // basic or additional
-    start_date: "",
-    contract_date: "",
-    completed_hours: 0,
-    remaining_hours: 30,
-    notes: "",
-    payment_type: "onetime", // onetime or installments
-    paymentInstallments: [{ hours: 0, amount: 0 }],
-    paymentFiles: [],
-    totalPaid: 0,
-  })
+const [newDriver, setNewDriver] = useState({
+  name: "",
+  phone: "",
+  email: "",
+  license_type: "B",
+  course_type: "basic", // basic or additional
+  start_date: "",
+  contract_date: "",
+  completed_hours: 0,
+  remaining_hours: 30,
+  notes: "",
+  payment_type: "onetime", // onetime or installments
+  paymentInstallments: [{ hours: 0, amount: 0 }],
+  paymentFiles: [],
+  totalPaid: 0,
+  price: 0, // ← DODAJ TO
+})
   const [installments, setInstallments] = useState([{ hours: 0, amount: 0 }])
   const [editedDriver, setEditedDriver] = useState(null)
   const [editInstallments, setEditInstallments] = useState([])
@@ -130,6 +133,7 @@ export default function DriverProfiles({ drivers, events }) {
       ...newDriver,
       branch: branchFilter !== "all" ? branchFilter : null,
       paymentInstallments: newDriver.payment_type === "installments" ? installments : [],
+      price: Number(newDriver.price) || 0, // Ensure price is a number
     }
 
     startTransition(async () => {
@@ -155,6 +159,7 @@ export default function DriverProfiles({ drivers, events }) {
           paymentInstallments: [],
           paymentFiles: [],
           totalPaid: 0,
+   
         })
         setInstallments([{ hours: 0, amount: 0 }])
         setShowAddDriverForm(false)
@@ -208,13 +213,14 @@ export default function DriverProfiles({ drivers, events }) {
     })
   }
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setNewDriver({
-      ...newDriver,
-      [name]: value,
-    })
-  }
+const handleInputChange = (e) => {
+  const { name, value } = e.target
+  setNewDriver({
+    ...newDriver,
+    [name]: name === "price" ? Number(value) : value,
+  })
+}
+
 
   const handleEditInputChange = (e) => {
     const { name, value } = e.target
@@ -562,6 +568,13 @@ export default function DriverProfiles({ drivers, events }) {
                   <div>{selectedDriver.payment_type === "onetime" ? "Jednorazowa" : "Raty"}</div>
                 </div>
               </div>
+              <div className="flex items-center">
+                <CreditCard className="w-5 h-5 mr-2 text-gray-400" />
+                <div>
+                  <div className="text-sm text-gray-500">Cena za kurs</div>
+                  <div>{selectedDriver?.price || "Brak ceny"}</div>
+                </div>
+              </div>
             </div>
 
             <div className="mb-6">
@@ -765,6 +778,17 @@ export default function DriverProfiles({ drivers, events }) {
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cena Kursu</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={editedDriver.price}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="100"
                   />
                 </div>
 
@@ -1078,6 +1102,18 @@ export default function DriverProfiles({ drivers, events }) {
                     type="number"
                     name="completed_hours"
                     value={newDriver.completed_hours}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    min="0"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Cena Kursu</label>
+                  <input
+                    type="number"
+                    name="price"
+                    value={newDriver.price}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     min="0"

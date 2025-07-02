@@ -111,6 +111,8 @@ export async function getInstructors() {
 
 // Dodawanie nowego kierowcy
 export async function addDriver(driverData) {
+
+  console.log("Dodawanie kierowcy:", driverData.price)
   try {
     // Przygotuj dane kierowcy do zapisu
     const driverToInsert = {
@@ -127,6 +129,7 @@ export async function addDriver(driverData) {
       payment_type: driverData.payment_type,
       total_paid: driverData.total_paid || 0,
       branch: driverData.branch || null,
+      price: driverData.price || null,
     }
 
     // Dodaj kierowcę do bazy danych
@@ -195,6 +198,7 @@ export async function updateDriver(driverData) {
       payment_type: driverData.payment_type,
       total_paid: driverData.totalPaid || 0,
       branch: driverData.branch || null,
+      price: driverData.price || null,
     }
 
     // Aktualizuj kierowcę w bazie danych

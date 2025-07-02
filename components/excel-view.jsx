@@ -148,7 +148,7 @@ export function ExcelView() {
   const academyConfig = {
     moto: {
       name: "MOTOAKADEMIA",
-      description: "Kategorie prawa jazdy dla motorów",
+      description: "",
       icon: Bike,
       color: "bg-red-600 text-white",
       headerBg: "bg-red-100",
@@ -156,7 +156,7 @@ export function ExcelView() {
     },
     zawodowa: {
       name: "ZAWODOWA AKADEMIA",
-      description: "Ciężarówki, autobusy, autokary, traktory",
+      description: "",
       icon: Truck,
       color: "bg-green-600 text-white",
       headerBg: "bg-green-100",
@@ -164,7 +164,7 @@ export function ExcelView() {
     },
     auto: {
       name: "AUTOAKADEMIA",
-      description: "Samochody osobowe",
+      description: "",
       icon: Car,
       color: "bg-blue-600 text-white",
       headerBg: "bg-blue-100",
@@ -391,9 +391,7 @@ export function ExcelView() {
                                           </div>
 
                                           <div className="flex items-center gap-2 flex-1 min-w-0">
-                                            <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
-                                              <User className="h-4 w-4 text-gray-600" />
-                                            </div>
+
                                             <div className="flex-1 min-w-0">
                                               <div className="font-medium text-gray-800 truncate text-sm">
                                                 {driver.name}

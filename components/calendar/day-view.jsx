@@ -187,7 +187,7 @@ export default function DayView({
     } else if (event.payment_due) {
       return "#FF0000" // Red for payment due
     } else {
-      return event.calendar.color || "#222222" // blue
+       return event.calendar?.color || "#222222" // blue
     }
   }
 
