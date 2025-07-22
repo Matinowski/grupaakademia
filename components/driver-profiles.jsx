@@ -23,46 +23,37 @@ import { useRouter } from "next/navigation"
 import PaymentForm from "@/components/driverProfiels/payment-form"
 import { useAuth } from "@/hooks/use-auth"
 import PdfViewer from "@/components/ui/pdf-viewer"
-import { number } from "zod"
 
+const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia", "Centrum", "Ozorków"]
 
-const branches = [
-  "Widzew",
-  "Bałuty",
-  "Zgierz",
-  "Górna",
-  "Dąbrowa",
-  "Retkinia",
-  "Centrum",
-  "Ozorków",
-]
-
-export default function DriverProfiles({ drivers, events }) {
+export default function DriverProfiles({ drivers, events, dates }) {
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { user } = useAuth()
-  console.log(drivers)
+  console.log(dates)
+
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDriver, setSelectedDriver] = useState(null)
   const [showAddDriverForm, setShowAddDriverForm] = useState(false)
   const [editMode, setEditMode] = useState(false)
-const [newDriver, setNewDriver] = useState({
-  name: "",
-  phone: "",
-  email: "",
-  license_type: "B",
-  course_type: "basic", // basic or additional
-  start_date: "",
-  contract_date: "",
-  completed_hours: 0,
-  remaining_hours: 30,
-  notes: "",
-  payment_type: "onetime", // onetime or installments
-  paymentInstallments: [{ hours: 0, amount: 0 }],
-  paymentFiles: [],
-  totalPaid: 0,
-  price: 0, // ← DODAJ TO
-})
+  const [newDriver, setNewDriver] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    license_type: "B",
+    course_type: "basic", // basic or additional
+    start_date: dates?.length > 0 ? dates[0].id : "", // Store date ID instead of date string
+    contract_date: "",
+    completed_hours: 0,
+    remaining_hours: 30,
+    notes: "",
+    payment_type: "onetime", // onetime or installments
+    paymentInstallments: [{ hours: 0, amount: 0 }],
+    paymentFiles: [],
+    totalPaid: 0,
+    price: 0,
+    branch: "Widzew", // Dodaj domyślną wartość
+  })
   const [installments, setInstallments] = useState([{ hours: 0, amount: 0 }])
   const [editedDriver, setEditedDriver] = useState(null)
   const [editInstallments, setEditInstallments] = useState([])
@@ -108,14 +99,23 @@ const [newDriver, setNewDriver] = useState({
   function calculateDuration(startTime, endTime) {
     const [startHour, startMinute] = startTime.split(":").map(Number)
     const [endHour, endMinute] = endTime.split(":").map(Number)
-
     const startTotal = startHour * 60 + startMinute
     const endTotal = endHour * 60 + endMinute
-
     const durationMinutes = endTotal - startTotal
     const durationHours = durationMinutes / 60
-
     return durationHours.toFixed(1) // np. 1.5
+  }
+
+  // Helper function to get date string from date ID
+  const getDateStringFromId = (dateId) => {
+    const dateObj = dates?.find((d) => d.id === dateId)
+    return dateObj ? dateObj.data : dateId
+  }
+
+  // Helper function to get date ID from date string (for existing drivers)
+  const getDateIdFromString = (dateString) => {
+    const dateObj = dates?.find((d) => d.data === dateString)
+    return dateObj ? dateObj.id : dateString
   }
 
   const handleDriverSelect = async (driver) => {
@@ -127,22 +127,19 @@ const [newDriver, setNewDriver] = useState({
 
   const handleAddDriverSubmit = async (e) => {
     e.preventDefault()
-
     // Add installments to the new driver object
     const driverWithInstallments = {
       ...newDriver,
-      branch: branchFilter !== "all" ? branchFilter : null,
+      branch: newDriver.branch || "Widzew", // Upewnij się, że branch nie jest pusty
       paymentInstallments: newDriver.payment_type === "installments" ? installments : [],
       price: Number(newDriver.price) || 0, // Ensure price is a number
     }
 
     startTransition(async () => {
       const result = await addDriver(driverWithInstallments)
-
       if (result.success) {
         // Refresh the page to get updated data
         router.refresh()
-
         // Reset form
         setNewDriver({
           name: "",
@@ -150,7 +147,7 @@ const [newDriver, setNewDriver] = useState({
           email: "",
           license_type: "B",
           course_type: "basic",
-          start_date: "",
+          start_date: dates?.length > 0 ? dates[0].id : "",
           contract_date: "",
           completed_hours: 0,
           remaining_hours: 30,
@@ -159,7 +156,8 @@ const [newDriver, setNewDriver] = useState({
           paymentInstallments: [],
           paymentFiles: [],
           totalPaid: 0,
-   
+          price: 0,
+          branch: "Widzew",
         })
         setInstallments([{ hours: 0, amount: 0 }])
         setShowAddDriverForm(false)
@@ -168,23 +166,21 @@ const [newDriver, setNewDriver] = useState({
       }
     })
   }
+
   const handleEditDriverSubmit = async (e) => {
     e.preventDefault()
-
     // Add installments to the edited driver object
     const updatedDriver = {
       ...editedDriver,
       paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
-      branch: branchFilter !== "all" ? branchFilter : null,
+      branch: editedDriver.branch || "Widzew", // Upewnij się, że branch nie jest pusty
     }
 
     startTransition(async () => {
       const result = await updateDriver(updatedDriver)
-
       if (result.success) {
         // Refresh the page to get updated data
         router.refresh()
-
         // Update local state
         setSelectedDriver(updatedDriver)
         setEditMode(false)
@@ -199,11 +195,9 @@ const [newDriver, setNewDriver] = useState({
 
     startTransition(async () => {
       const result = await deleteDriver(selectedDriver.id)
-
       if (result.success) {
         // Refresh the page to get updated data
         router.refresh()
-
         // Reset selected driver
         setSelectedDriver(null)
         setConfirmDelete(false)
@@ -213,20 +207,19 @@ const [newDriver, setNewDriver] = useState({
     })
   }
 
-const handleInputChange = (e) => {
-  const { name, value } = e.target
-  setNewDriver({
-    ...newDriver,
-    [name]: name === "price" ? Number(value) : value,
-  })
-}
-
+  const handleInputChange = (e) => {
+    const { name, value } = e.target
+    setNewDriver({
+      ...newDriver,
+      [name]: name === "price" ? Number(value) : value,
+    })
+  }
 
   const handleEditInputChange = (e) => {
     const { name, value } = e.target
     setEditedDriver({
       ...editedDriver,
-      [name]: value,
+      [name]: name === "price" ? Number(value) : value,
     })
   }
 
@@ -306,7 +299,6 @@ const handleInputChange = (e) => {
       // Mark the file for deletion in the database
       const filesToDelete = editedDriver.filesToDelete || []
       filesToDelete.push(editedDriver.paymentFiles[index])
-
       setEditedDriver({
         ...editedDriver,
         filesToDelete,
@@ -335,6 +327,8 @@ const handleInputChange = (e) => {
   const startEditMode = () => {
     setEditedDriver({
       ...selectedDriver,
+      branch: selectedDriver.branch || "Widzew", // Upewnij się, że branch ma wartość
+      start_date: getDateIdFromString(selectedDriver.start_date), // Convert date string to ID for editing
     })
     setEditInstallments(
       selectedDriver.paymentInstallments?.length > 0
@@ -421,7 +415,6 @@ const handleInputChange = (e) => {
                 >
                   {driver.remaining_hours === 0 ? "Ukończono" : `${driver.remaining_hours} godzin pozostało`}
                 </span>
-
                 {hasMissedPayment(driver) && (
                   <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 flex items-center">
                     <AlertTriangle className="w-3 h-3 mr-1" />
@@ -431,7 +424,6 @@ const handleInputChange = (e) => {
               </div>
             </div>
           ))}
-
           {filteredDrivers.length === 0 && (
             <div className="p-8 text-center text-gray-500">Nie znaleziono kierowców pasujących do "{searchQuery}"</div>
           )}
@@ -449,6 +441,7 @@ const handleInputChange = (e) => {
                 <p className="text-gray-500">
                   Typ Kursu: {selectedDriver.course_type === "basic" ? "Podstawowy" : "Dodatkowy"}
                 </p>
+                <p className="text-gray-500">Placówka: {selectedDriver.branch || "Brak"}</p>
               </div>
               <div className="flex flex-col gap-2">
                 <div className="flex gap-2">
@@ -476,7 +469,6 @@ const handleInputChange = (e) => {
                 >
                   {selectedDriver.remaining_hours === 0 ? "Szkolenie Ukończone" : "W Trakcie Szkolenia"}
                 </div>
-
                 {hasMissedPayment(selectedDriver) && (
                   <div className="px-3 py-1 rounded-full text-sm font-medium bg-red-100 text-red-800 flex items-center">
                     <AlertTriangle className="w-4 h-4 mr-1" />
@@ -518,7 +510,6 @@ const handleInputChange = (e) => {
                   <div>{selectedDriver.phone}</div>
                 </div>
               </div>
-
               <div className="flex items-center">
                 <User className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -526,15 +517,13 @@ const handleInputChange = (e) => {
                   <div>{selectedDriver.email}</div>
                 </div>
               </div>
-
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
                   <div className="text-sm text-gray-500">Data Rozpoczęcia</div>
-                  <div>{selectedDriver.start_date}</div>
+                  <div>{getDateStringFromId(selectedDriver.start_date)}</div>
                 </div>
               </div>
-
               <div className="flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -542,8 +531,6 @@ const handleInputChange = (e) => {
                   <div>{selectedDriver.contract_date || "-"}</div>
                 </div>
               </div>
-
-
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -551,7 +538,6 @@ const handleInputChange = (e) => {
                   <div>{selectedDriver.completed_hours}</div>
                 </div>
               </div>
-
               <div className="flex items-center">
                 <Clock className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -559,8 +545,6 @@ const handleInputChange = (e) => {
                   <div>{selectedDriver.remaining_hours}</div>
                 </div>
               </div>
-
-
               <div className="flex items-center">
                 <CreditCard className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -583,16 +567,12 @@ const handleInputChange = (e) => {
                 <div
                   className="bg-blue-600 h-2.5 rounded-full"
                   style={{
-                    width: `${(selectedDriver.completed_hours /  selectedDriver.remaining_hours) * 100}%`,
+                    width: `${(selectedDriver.completed_hours / selectedDriver.remaining_hours) * 100}%`,
                   }}
                 ></div>
               </div>
               <div className="text-sm text-gray-500 mt-1">
-                {Math.round(
-                 (selectedDriver.completed_hours /  selectedDriver.remaining_hours) *
-                    100,
-                )}
-                % ukończone
+                {Math.round((selectedDriver.completed_hours / selectedDriver.remaining_hours) * 100)}% ukończone
               </div>
             </div>
 
@@ -657,7 +637,8 @@ const handleInputChange = (e) => {
                           {formatDate(lesson.date)} o {lesson.start_time}
                         </div>
                         <div className="text-sm text-gray-500">
-                          {Number(calculateDuration(lesson.start_time, lesson.end_time))} godzin z { lesson.instructor.name + " " + lesson.instructor.surname}
+                          {Number(calculateDuration(lesson.start_time, lesson.end_time))} godzin z{" "}
+                          {lesson.instructor.name + " " + lesson.instructor.surname}
                         </div>
                       </div>
                     </div>
@@ -684,7 +665,6 @@ const handleInputChange = (e) => {
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
                   <input
@@ -696,7 +676,6 @@ const handleInputChange = (e) => {
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
@@ -707,7 +686,6 @@ const handleInputChange = (e) => {
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Prawa Jazdy</label>
                   <select
@@ -731,7 +709,6 @@ const handleInputChange = (e) => {
                     <option value="Wózek">Wózek Widłowy</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Kursu</label>
                   <select
@@ -744,19 +721,23 @@ const handleInputChange = (e) => {
                     <option value="additional">Dodatkowy</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Rozpoczęcia</label>
-                  <input
-                    type="date"
+                  <select
                     name="start_date"
                     value={editedDriver.start_date}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                  />
+                  >
+                    <option value="">Wybierz datę</option>
+                    {dates?.map((date) => (
+                      <option key={date.id} value={date.id}>
+                        {formatDate(date.data)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Zawarcia Umowy</label>
                   <input
@@ -767,8 +748,6 @@ const handleInputChange = (e) => {
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ukończone Godziny</label>
                   <input
@@ -791,7 +770,6 @@ const handleInputChange = (e) => {
                     min="100"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Liczba Godziny</label>
                   <input
@@ -803,23 +781,21 @@ const handleInputChange = (e) => {
                     min="0"
                   />
                 </div>
-
                 <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
-                <select
-                  value={editedDriver?.branch || branchFilter}
-                  onChange={(e) => setBranchFilter(e.target.value)}
-                  className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="all">Wszystkie placówki</option>
-                  {branches.map((branch) => (
-                    <option key={branch} value={branch}>
-                      {branch}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
+                  <select
+                    name="branch"
+                    value={editedDriver?.branch || "Widzew"}
+                    onChange={handleEditInputChange}
+                    className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    {branches.map((branch) => (
+                      <option key={branch} value={branch}>
+                        {branch}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Suma Wpłat (PLN)</label>
                   <input
@@ -874,7 +850,6 @@ const handleInputChange = (e) => {
                       Dodaj Ratę
                     </button>
                   </div>
-
                   {editInstallments.map((installment, index) => (
                     <div key={index} className="flex gap-4 items-center mb-2">
                       <div className="flex-1">
@@ -934,7 +909,6 @@ const handleInputChange = (e) => {
                     </label>
                   </div>
                 </div>
-
                 {editedDriver.paymentFiles && editedDriver.paymentFiles.length > 0 && (
                   <div className="space-y-2 mt-2">
                     {editedDriver.paymentFiles.map((file, index) => (
@@ -1009,7 +983,6 @@ const handleInputChange = (e) => {
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Telefon</label>
                   <input
@@ -1021,7 +994,6 @@ const handleInputChange = (e) => {
                     required
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
                   <input
@@ -1030,10 +1002,8 @@ const handleInputChange = (e) => {
                     value={newDriver.email}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Prawa Jazdy</label>
                   <select
@@ -1057,7 +1027,6 @@ const handleInputChange = (e) => {
                     <option value="Wózek">Wózek Widłowy</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Typ Kursu</label>
                   <select
@@ -1070,19 +1039,23 @@ const handleInputChange = (e) => {
                     <option value="additional">Dodatkowy</option>
                   </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Rozpoczęcia</label>
-                  <input
-                    type="date"
+                  <select
                     name="start_date"
                     value={newDriver.start_date}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
-                  />
+                  >
+                    <option value="">Wybierz datę</option>
+                    {dates?.map((date) => (
+                      <option key={date.id} value={date.id}>
+                        {formatDate(date.data)}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Zawarcia Umowy</label>
                   <input
@@ -1093,9 +1066,6 @@ const handleInputChange = (e) => {
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
-
-
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Ukończone Godziny</label>
                   <input
@@ -1107,7 +1077,6 @@ const handleInputChange = (e) => {
                     min="0"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Cena Kursu</label>
                   <input
@@ -1119,7 +1088,6 @@ const handleInputChange = (e) => {
                     min="0"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Liczba Godziny</label>
                   <input
@@ -1136,11 +1104,11 @@ const handleInputChange = (e) => {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Placówka</label>
                 <select
-                  value={editedDriver?.branch || branchFilter}
-                  onChange={(e) => setBranchFilter(e.target.value)}
+                  name="branch"
+                  value={newDriver.branch}
+                  onChange={handleInputChange}
                   className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="all">Wszystkie placówki</option>
                   {branches.map((branch) => (
                     <option key={branch} value={branch}>
                       {branch}
@@ -1190,7 +1158,6 @@ const handleInputChange = (e) => {
                       Dodaj Ratę
                     </button>
                   </div>
-
                   {installments.map((installment, index) => (
                     <div key={index} className="flex gap-4 items-center mb-2">
                       <div className="flex-1">
@@ -1242,7 +1209,6 @@ const handleInputChange = (e) => {
                     </label>
                   </div>
                 </div>
-
                 {newDriver.paymentFiles.length > 0 && (
                   <div className="space-y-2 mt-2">
                     {newDriver.paymentFiles.map((file, index) => (

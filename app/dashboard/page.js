@@ -1,5 +1,4 @@
 "use client"
-
 import { useState, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { useLoadingScreen } from "@/hooks/use-loading-screen"
@@ -24,6 +23,7 @@ import BranchReports from "@/components/reports"
 import StatisticsDashboard from "@/components/statistic"
 import UserManagement from "@/components/user-management"
 import { ExcelView } from "@/components/excel-view"
+import { set } from "zod"
 
 export default function DrivingSchoolApp() {
   const { showLoading, updateLoading, hideLoading } = useLoadingScreen()
@@ -41,6 +41,7 @@ export default function DrivingSchoolApp() {
   const [drivers, setDrivers] = useState([])
   const [instructors, setInstructors] = useState([])
   const [calendars, setCalendars] = useState([])
+  const [dates, setDates] = useState([])
 
   // Modal state
   const [showEventModal, setShowEventModal] = useState(false)
@@ -57,7 +58,6 @@ export default function DrivingSchoolApp() {
   // Fetch all data on component mount
   useEffect(() => {
     loadAllData()
-
     // Subscribe to changes in 'instructors' table
     const instructorSubscription = supabase
       .channel("custom-instructors-channel")
@@ -91,7 +91,6 @@ export default function DrivingSchoolApp() {
         },
         async (payload) => {
           const result = await getDrivers()
-
           if (result) {
             notification.warning("Zmiana w tabeli kierowców", "Zaktualizowano dane kierowców")
             setDrivers(result)
@@ -115,7 +114,6 @@ export default function DrivingSchoolApp() {
         },
         async (payload) => {
           const result = await getDrivers()
-
           if (result) {
             notification.warning("Zmiana w tabeli kierowców", "Zaktualizowano dane kierowców (płatności)")
             setDrivers(result)
@@ -166,7 +164,6 @@ export default function DrivingSchoolApp() {
   const loadAllData = async () => {
     try {
       showLoading("Inicjalizacja aplikacji...", 0)
-
       updateLoading("Pobieranie danych początkowych", 10)
       await fetch("/api/init/getinitdata")
         .then((response) => response.json())
@@ -176,7 +173,6 @@ export default function DrivingSchoolApp() {
           }
           console.log("Initial data loaded:", data)
           setInstructors(data.instructors || [])
-
           // Ustaw wszystkie kalendarze jako niewidoczne domyślnie
           const calendarsWithDefaultVisibility = (data.calendars || []).map((calendar) => ({
             ...calendar,
@@ -195,14 +191,12 @@ export default function DrivingSchoolApp() {
       updateLoading("Pobieranie wydarzeń", 30)
       const currentMonth = currentDate.getMonth() + 1
       const currentYear = currentDate.getFullYear()
-
       await fetch(`/api/events?month=${currentMonth}&year=${currentYear}`)
         .then((response) => response.json())
         .then((data) => {
           if (data.error) {
             throw new Error(data.error)
           }
-
           // Transform API events to match component format if needed
           const formattedEvents = data.events.map((event) => ({
             id: event.id,
@@ -222,7 +216,6 @@ export default function DrivingSchoolApp() {
             created_at: event.created_at,
             is_too_late: event.is_too_late,
           }))
-
           setEvents(formattedEvents)
           console.log("Events loaded:", formattedEvents)
         })
@@ -234,12 +227,23 @@ export default function DrivingSchoolApp() {
       // Load drivers
       updateLoading("Pobieranie danych kursantów", 60)
       const result = await getDrivers()
-
       if (result) {
         setDrivers(result)
       } else {
         throw new Error("Nie udało się pobrać danych kierowców")
       }
+
+      updateLoading("Pobieranie dat kursów", 70)
+       await fetch("/api/dates")
+        .then((response) => response.json())
+        .then((data) => {
+          setDates(data || [])
+
+        })
+        .catch((error) => {
+          notification.error("Błąd ładowania dat kursów", error.message || "Wystąpił problem podczas ładowania dat kursów")
+          console.error("Error loading dates:", error)
+        })
 
       updateLoading("Pobieranie zakończone, ładowanie aplikacji...", 90)
       updateLoading("Gotowe!", 100)
@@ -261,14 +265,11 @@ export default function DrivingSchoolApp() {
     try {
       const currentMonth = currentDate.getMonth() + 1
       const currentYear = currentDate.getFullYear()
-
       const response = await fetch(`/api/events?month=${currentMonth}&year=${currentYear}`)
       const data = await response.json()
-
       if (data.error) {
         throw new Error(data.error)
       }
-
       // Transform API events to match component format
       const formattedEvents = data.events.map((event) => ({
         id: event.id,
@@ -287,7 +288,6 @@ export default function DrivingSchoolApp() {
         created_at: event.created_at,
         is_too_late: event.is_too_late,
       }))
-
       setEvents(formattedEvents)
     } catch (error) {
       notification.error("Błąd ładowania wydarzeń", error.message || "Wystąpił problem podczas ładowania wydarzeń")
@@ -310,35 +310,41 @@ export default function DrivingSchoolApp() {
     }))
   }
 
-  // Update the getFilteredEvents function to filter by instructors and drivers
+  // Updated getFilteredEvents function with new instructor filtering logic
   const getFilteredEvents = () => {
     // Get arrays of selected calendar, instructor and driver IDs
     const selectedCalendarIds = calendars.filter((cal) => cal.visible).map((cal) => cal.id)
     const selectedinstructor_ids = Object.entries(selectedInstructors)
       .filter(([_, isSelected]) => isSelected)
       .map(([id, _]) => id)
-
     const selecteddriver_ids = Object.entries(selectedDrivers)
       .filter(([_, isSelected]) => isSelected)
       .map(([id, _]) => id)
 
     return events.filter((event) => {
-      // NEW LOGIC: If no calendars are selected, show all events
+      // Calendar filtering: If no calendars are selected, show all events
       // If calendars are selected, only show events from those calendars
       if (selectedCalendarIds.length > 0 && !selectedCalendarIds.includes(event.calendar_id)) {
         return false
       }
 
-      // If no instructors are selected, don't filter by instructor
-      // If instructors are selected, only show events for those instructors
-      if (
-        selectedinstructor_ids.length > 0 &&
-        (!event.instructor_id || !selectedinstructor_ids.includes(event.instructor_id))
-      ) {
-        return false
+      // NEW INSTRUCTOR FILTERING LOGIC:
+      // Check if any instructors are available in the system
+      const hasInstructorsInSystem = instructors.length > 0
+
+      if (hasInstructorsInSystem) {
+        // If there are instructors in the system but none are selected, show NO events
+        if (selectedinstructor_ids.length === 0) {
+          return false
+        }
+
+        // If instructors are selected, only show events for those instructors
+        if (!event.instructor_id || !selectedinstructor_ids.includes(event.instructor_id)) {
+          return false
+        }
       }
 
-      // If no drivers are selected, don't filter by driver
+      // Driver filtering: If no drivers are selected, don't filter by driver
       // If drivers are selected, only show events for those drivers
       if (selecteddriver_ids.length > 0 && (!event.driver_id || !selecteddriver_ids.includes(event.driver_id))) {
         return false
@@ -354,7 +360,6 @@ export default function DrivingSchoolApp() {
     const selectedInstructorIds = Object.entries(selectedInstructors)
       .filter(([_, isSelected]) => isSelected)
       .map(([id, _]) => id)
-
     const selectedInstructorId = selectedInstructorIds.length > 0 ? selectedInstructorIds[0] : null
 
     setSelectedDate(date)
@@ -429,7 +434,6 @@ export default function DrivingSchoolApp() {
   const handleAddCalendar = async (newCalendar) => {
     try {
       showLoading("Dodawanie kalendarza...", 50)
-
       // Call API to create calendar
       const response = await fetch("/api/calendars", {
         method: "POST",
@@ -442,16 +446,12 @@ export default function DrivingSchoolApp() {
           visible: false, // Zmienione z true na false
         }),
       })
-
       const data = await response.json()
-
       if (data.error) {
         throw new Error(data.error)
       }
-
       // Update local state with the new calendar from API
       setCalendars([...calendars, data.calendar])
-
       hideLoading()
       notification.success("Kalendarz dodany", "Nowy kalendarz został pomyślnie dodany")
     } catch (error) {
@@ -465,10 +465,8 @@ export default function DrivingSchoolApp() {
   const handleCalendarColorChange = async (calendar_id, newColor) => {
     try {
       showLoading("Aktualizacja koloru kalendarza...", 50)
-
       // Update local state immediately for responsive UI
       setCalendars(calendars.map((cal) => (cal.id === calendar_id ? { ...cal, color: newColor } : cal)))
-
       // Call API to update calendar color
       const response = await fetch(`/api/calendars/${calendar_id}`, {
         method: "PATCH",
@@ -477,13 +475,10 @@ export default function DrivingSchoolApp() {
         },
         body: JSON.stringify({ color: newColor }),
       })
-
       const data = await response.json()
-
       if (data.error) {
         throw new Error(data.error)
       }
-
       hideLoading()
       notification.success("Kolor zaktualizowany", "Kolor kalendarza został pomyślnie zmieniony")
     } catch (error) {
@@ -498,7 +493,6 @@ export default function DrivingSchoolApp() {
   const handleDragEvent = async (eventId, newDate) => {
     try {
       showLoading("Aktualizacja wydarzenia...", 50)
-
       const eventToUpdate = events.find((event) => event.id === eventId)
       if (!eventToUpdate) {
         throw new Error("Nie znaleziono wydarzenia")
@@ -518,7 +512,6 @@ export default function DrivingSchoolApp() {
         ...eventToUpdate,
         date: updatedDate,
       }
-
       setEvents(
         events.map((event) => {
           if (event.id === eventId) {
@@ -536,20 +529,16 @@ export default function DrivingSchoolApp() {
         },
         body: JSON.stringify({ date: formattedDate }),
       })
-
       const data = await response.json()
-
       if (data.error) {
         throw new Error(data.error)
       }
-
       hideLoading()
       notification.success("Zaktualizowano", "Wydarzenie zostało przesunięte")
     } catch (error) {
       hideLoading()
       notification.error("Błąd", "Nie udało się przesunąć wydarzenia: " + (error.message || ""))
       console.error("Error updating event:", error)
-
       // Reload events to ensure UI is in sync with server
       loadEvents()
     }
@@ -559,7 +548,6 @@ export default function DrivingSchoolApp() {
   const handleDragEventTime = async (eventId, newstart_time, newend_time) => {
     try {
       showLoading("Aktualizacja czasu wydarzenia...", 50)
-
       const eventToUpdate = events.find((event) => event.id === eventId)
       if (!eventToUpdate) {
         throw new Error("Nie znaleziono wydarzenia")
@@ -571,7 +559,6 @@ export default function DrivingSchoolApp() {
         start_time: newstart_time,
         end_time: newend_time,
       }
-
       setEvents(
         events.map((event) => {
           if (event.id === eventId) {
@@ -592,20 +579,16 @@ export default function DrivingSchoolApp() {
           end_time: newend_time,
         }),
       })
-
       const data = await response.json()
-
       if (data.error) {
         throw new Error(data.error)
       }
-
       hideLoading()
       notification.success("Zaktualizowano", "Czas wydarzenia został zmieniony")
     } catch (error) {
       hideLoading()
       notification.error("Błąd", "Nie udało się zmienić czasu wydarzenia: " + (error.message || ""))
       console.error("Error updating event time:", error)
-
       // Reload events to ensure UI is in sync with server
       loadEvents()
     }
@@ -615,7 +598,6 @@ export default function DrivingSchoolApp() {
   const handleSaveEvent = async (eventData) => {
     try {
       showLoading(selectedEvent ? "Aktualizacja wydarzenia..." : "Tworzenie wydarzenia...", 50)
-
       // Format the event data for the API
       const apiEventData = {
         title: eventData.title,
@@ -629,10 +611,8 @@ export default function DrivingSchoolApp() {
       }
 
       let response, data
-
       if (selectedEvent) {
         // Update existing event
-
         response = await fetch(`/api/events/${selectedEvent.id}`, {
           method: "PATCH",
           headers: {
@@ -640,20 +620,16 @@ export default function DrivingSchoolApp() {
           },
           body: JSON.stringify(apiEventData),
         })
-
         data = await response.json()
-
         if (data.error) {
           throw new Error(data.error)
         }
-
         // Update local state with the updated event
         const updatedEvent = {
           ...selectedEvent,
           ...eventData,
           date: new Date(eventData.date),
         }
-
         setEvents(events.map((event) => (event.id === updatedEvent.id ? updatedEvent : event)))
         notification.success("Zaktualizowano", "Wydarzenie zostało zaktualizowane")
       } else {
@@ -665,13 +641,10 @@ export default function DrivingSchoolApp() {
           },
           body: JSON.stringify(apiEventData),
         })
-
         data = await response.json()
-
         if (data.error) {
           throw new Error(data.error)
         }
-
         // Format the new event from API to match component format
         const newEvent = {
           id: data.event.id,
@@ -684,12 +657,10 @@ export default function DrivingSchoolApp() {
           driver_id: data.event.driver_id,
           instructor_id: data.event.instructor_id,
         }
-
         // Update local state with the new event
         setEvents([...events, newEvent])
         notification.success("Utworzono", "Nowe wydarzenie zostało utworzone")
       }
-
       hideLoading()
       closeModal()
     } catch (error) {
@@ -708,21 +679,16 @@ export default function DrivingSchoolApp() {
   const handleDeleteEvent = async (eventId) => {
     try {
       showLoading("Usuwanie wydarzenia...", 50)
-
       // Call API to delete event
       const response = await fetch(`/api/events/${eventId}`, {
         method: "DELETE",
       })
-
       const data = await response.json()
-
       if (data.error) {
         throw new Error(data.error)
       }
-
       // Update local state
       setEvents(events.filter((event) => event.id !== eventId))
-
       hideLoading()
       notification.success("Usunięto", "Wydarzenie zostało usunięte")
       closeModal()
@@ -829,6 +795,7 @@ export default function DrivingSchoolApp() {
             <div className="flex-1 overflow-auto">
               <DriverProfiles
                 drivers={drivers}
+                dates={dates}
                 onSelectDriver={(driver) => console.log("Selected driver:", driver.name)}
                 onAddDriver={async (newDriver) => {
                   console.log("Adding driver:", newDriver)
@@ -912,7 +879,6 @@ export default function DrivingSchoolApp() {
                     defaultValue="Professional Driving School"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     {translate("settings.Address")}
@@ -923,7 +889,6 @@ export default function DrivingSchoolApp() {
                     defaultValue="123 Main Street, Anytown, USA"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{translate("settings.Phone")}</label>
                   <input
@@ -932,7 +897,6 @@ export default function DrivingSchoolApp() {
                     defaultValue="555-123-4567"
                   />
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">{translate("settings.Email")}</label>
                   <input
@@ -941,7 +905,6 @@ export default function DrivingSchoolApp() {
                     defaultValue="info@professionaldrivingschool.com"
                   />
                 </div>
-
                 <div className="pt-4">
                   <button
                     className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
