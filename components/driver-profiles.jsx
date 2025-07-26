@@ -684,6 +684,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     value={editedDriver.email}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
                 <div>
@@ -746,6 +747,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     value={editedDriver.contract_date || ""}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
                 <div>
@@ -1002,6 +1004,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     value={newDriver.email}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
                 <div>
@@ -1064,6 +1067,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     value={newDriver.contract_date}
                     onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
                   />
                 </div>
                 <div>
@@ -1200,7 +1204,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                   <div className="flex items-center justify-center flex-col">
                     <Upload className="w-8 h-8 text-gray-400 mb-2" />
                     <p className="text-sm text-gray-500 mb-2">Przeciągnij pliki lub kliknij, aby dodać</p>
-                    <input type="file" multiple onChange={handleFileUpload} className="hidden" id="payment-files" />
+                    <input type="file" multiple onChange={handleFileUpload} className="hidden" id="payment-files" required/>
                     <label
                       htmlFor="payment-files"
                       className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 cursor-pointer"

@@ -26,14 +26,19 @@ export async function GET() {
       );
     }
 
+    const { data: dates } = await supabaseAdmin
+    .from("course_dates")
+    .select("*")
+
+
     const mappedDrivers = drivers
       .map(driver => ({
         ...driver,
         start_date: driver.course_dates?.data || null
       }))
+      console.log("asd", dates)
 
-
-    return NextResponse.json({ drivers: mappedDrivers });
+    return NextResponse.json({ drivers: mappedDrivers, dates });
   } catch (error) {
     console.error("Błąd serwera:", error)
     return NextResponse.json({ error: "Błąd serwera" }, { status: 500 })

@@ -23,7 +23,6 @@ import BranchReports from "@/components/reports"
 import StatisticsDashboard from "@/components/statistic"
 import UserManagement from "@/components/user-management"
 import { ExcelView } from "@/components/excel-view"
-import { set } from "zod"
 
 export default function DrivingSchoolApp() {
   const { showLoading, updateLoading, hideLoading } = useLoadingScreen()
@@ -102,6 +101,37 @@ export default function DrivingSchoolApp() {
       )
       .subscribe()
 
+        const datesSubscription = supabase
+      .channel("custom-dates-channel")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "course_dates",
+        },
+        async (payload) => {
+
+          await fetch("/api/dates")
+            .then((res) => res.json())
+            .then((data) => {
+              setDates(data || [])
+              notification.info("Daty kursów", "Zaktualizowano daty kursów")
+            })
+            .catch((error) => {
+              notification.error("Błąd", "Nie udało się pobrać dat")
+              console.error("Error fetching events:", error)
+            })
+
+
+
+       
+       
+  
+        },
+      )
+      .subscribe()
+
     // Subscribe to changes in 'payments' table
     const paymentSubscription = supabase
       .channel("custom-payments-channel")
@@ -157,6 +187,7 @@ export default function DrivingSchoolApp() {
       supabase.removeChannel(driverSubscription)
       supabase.removeChannel(paymentSubscription)
       supabase.removeChannel(eventsSubscription)
+      supabase.removeChannel(datesSubscription)
     }
   }, [])
 
@@ -234,14 +265,16 @@ export default function DrivingSchoolApp() {
       }
 
       updateLoading("Pobieranie dat kursów", 70)
-       await fetch("/api/dates")
+      await fetch("/api/dates")
         .then((response) => response.json())
         .then((data) => {
           setDates(data || [])
-
         })
         .catch((error) => {
-          notification.error("Błąd ładowania dat kursów", error.message || "Wystąpił problem podczas ładowania dat kursów")
+          notification.error(
+            "Błąd ładowania dat kursów",
+            error.message || "Wystąpił problem podczas ładowania dat kursów",
+          )
           console.error("Error loading dates:", error)
         })
 
@@ -310,44 +343,40 @@ export default function DrivingSchoolApp() {
     }))
   }
 
-  // Updated getFilteredEvents function with new instructor filtering logic
+  // FIXED: Updated getFilteredEvents function - show nothing when no filters are active
   const getFilteredEvents = () => {
     // Get arrays of selected calendar, instructor and driver IDs
     const selectedCalendarIds = calendars.filter((cal) => cal.visible).map((cal) => cal.id)
-    const selectedinstructor_ids = Object.entries(selectedInstructors)
+    const selectedInstructorIds = Object.entries(selectedInstructors)
       .filter(([_, isSelected]) => isSelected)
       .map(([id, _]) => id)
-    const selecteddriver_ids = Object.entries(selectedDrivers)
+    const selectedDriverIds = Object.entries(selectedDrivers)
       .filter(([_, isSelected]) => isSelected)
       .map(([id, _]) => id)
 
+    // If no filters are active (no checkboxes selected), show nothing
+    if (selectedCalendarIds.length === 0 && selectedInstructorIds.length === 0 && selectedDriverIds.length === 0) {
+      return []
+    }
+
     return events.filter((event) => {
-      // Calendar filtering: If no calendars are selected, show all events
-      // If calendars are selected, only show events from those calendars
+      // Calendar filtering: If calendars are selected, only show events from those calendars
       if (selectedCalendarIds.length > 0 && !selectedCalendarIds.includes(event.calendar_id)) {
         return false
       }
 
-      // NEW INSTRUCTOR FILTERING LOGIC:
-      // Check if any instructors are available in the system
-      const hasInstructorsInSystem = instructors.length > 0
-
-      if (hasInstructorsInSystem) {
-        // If there are instructors in the system but none are selected, show NO events
-        if (selectedinstructor_ids.length === 0) {
-          return false
-        }
-
-        // If instructors are selected, only show events for those instructors
-        if (!event.instructor_id || !selectedinstructor_ids.includes(event.instructor_id)) {
+      // Instructor filtering: If instructors are selected, only show events for those instructors
+      if (selectedInstructorIds.length > 0) {
+        if (!event.instructor_id || !selectedInstructorIds.includes(event.instructor_id)) {
           return false
         }
       }
 
-      // Driver filtering: If no drivers are selected, don't filter by driver
-      // If drivers are selected, only show events for those drivers
-      if (selecteddriver_ids.length > 0 && (!event.driver_id || !selecteddriver_ids.includes(event.driver_id))) {
-        return false
+      // Driver filtering: If drivers are selected, only show events for those drivers
+      if (selectedDriverIds.length > 0) {
+        if (!event.driver_id || !selectedDriverIds.includes(event.driver_id)) {
+          return false
+        }
       }
 
       return true

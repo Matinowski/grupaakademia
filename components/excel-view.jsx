@@ -14,7 +14,6 @@ import {
   Plus,
   X,
   Phone,
-  Clock,
 } from "lucide-react"
 
 // Poprawiona funkcja formatowania daty - unika problemów ze strefami czasowymi
@@ -23,11 +22,9 @@ function formatDate(dateString) {
     // Parsuj datę ręcznie, aby uniknąć problemów ze strefami czasowymi
     const [year, month, day] = dateString.split("-").map(Number)
     const date = new Date(year, month - 1, day) // month - 1 bo miesiące są 0-indeksowane
-
     const dayStr = date.getDate().toString().padStart(2, "0")
     const monthStr = (date.getMonth() + 1).toString().padStart(2, "0")
     const yearStr = date.getFullYear()
-
     return `${dayStr}.${monthStr}.${yearStr}`
   } catch (e) {
     return dateString
@@ -96,12 +93,6 @@ function CustomCalendar({ availableDates, selectedDate, onDateSelect, onClose })
   console.log("Calendar received availableDates:", availableDates)
   console.log("Calendar selectedDate:", selectedDate)
 
-  // Test z hardkodowaną datą
-  const testDate = new Date(2025, 6, 23) // 23 lipca 2025 (miesiąc 6 = lipiec)
-  const testDateString = dateToString(testDate)
-  console.log("Test date string:", testDateString)
-  console.log("Test date available:", availableDates.includes(testDateString))
-
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth())
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear())
 
@@ -122,7 +113,7 @@ function CustomCalendar({ availableDates, selectedDate, onDateSelect, onClose })
 
   const daysOfWeek = ["Pn", "Wt", "Śr", "Cz", "Pt", "Sb", "Nd"]
 
-  // Funkcja sprawdzająca czy data jest dostępna - poprawiona
+  // Funkcja sprawdzająca czy data jest dostępna
   const isDateAvailable = (date) => {
     const dateString = dateToString(date)
     const isAvailable = availableDates.includes(dateString)
@@ -130,7 +121,7 @@ function CustomCalendar({ availableDates, selectedDate, onDateSelect, onClose })
     return isAvailable
   }
 
-  // Funkcja sprawdzająca czy data jest wybrana - poprawiona
+  // Funkcja sprawdzająca czy data jest wybrana
   const isDateSelected = (date) => {
     const dateString = dateToString(date)
     return selectedDate === dateString
@@ -141,7 +132,6 @@ function CustomCalendar({ availableDates, selectedDate, onDateSelect, onClose })
     const firstDay = new Date(currentYear, currentMonth, 1)
     const lastDay = new Date(currentYear, currentMonth + 1, 0)
     const startDate = new Date(firstDay)
-
     // Znajdź pierwszy poniedziałek
     const dayOfWeek = firstDay.getDay()
     const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1
@@ -149,7 +139,6 @@ function CustomCalendar({ availableDates, selectedDate, onDateSelect, onClose })
 
     const days = []
     const currentDate = new Date(startDate)
-
     // Generuj 42 dni (6 tygodni)
     for (let i = 0; i < 42; i++) {
       days.push(new Date(currentDate))
@@ -198,11 +187,9 @@ function CustomCalendar({ availableDates, selectedDate, onDateSelect, onClose })
           <button onClick={goToPreviousMonth} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ChevronLeft className="h-5 w-5" />
           </button>
-
           <h2 className="text-xl font-semibold text-gray-900">
             {monthNames[currentMonth]} {currentYear}
           </h2>
-
           <button onClick={goToNextMonth} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <ChevronRight className="h-5 w-5" />
           </button>
@@ -377,7 +364,7 @@ export function ExcelView() {
   const [loading, setLoading] = useState(true)
   const [drivers, setDrivers] = useState([])
   const [groupedDrivers, setGroupedDrivers] = useState({})
-  const [dates, setDates] = useState([])
+  const [dates, setDates] = useState([]) // Dostępne daty z API
   const [licenseTypes, setLicenseTypes] = useState([])
   const [branches, setBranches] = useState([])
   const [selectedDate, setSelectedDate] = useState("")
@@ -399,47 +386,60 @@ export function ExcelView() {
       }
 
       const driversData = data.drivers
+
       setDrivers(driversData)
 
-      // Wyodrębnianie unikalnych dat - użyj course_dates.data zamiast start_date
-      const uniqueDates = [
-        ...new Set(driversData.map((driver) => driver.course_dates?.data || driver.start_date)),
-      ].sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+      // Użyj data.dates zamiast wyodrębniania dat z kierowców
+      const datesData = data.dates || []
+      console.log("Raw dates data from API:", datesData)
+
+      // Wyodrębnij właściwość 'data' z każdego obiektu daty
+      const availableDates = datesData.map((dateObj) => dateObj.data)
+      console.log("Available dates from API:", availableDates)
+
+      // Sortuj daty od najnowszej do najstarszej
+      const sortedDates = availableDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
+
       const uniqueLicenseTypes = [...new Set(driversData.map((driver) => driver.license_type))]
       const uniqueBranches = [...new Set(driversData.map((driver) => driver.branch))]
 
-      setDates(uniqueDates)
-      console.log("Unique dates found:", uniqueDates)
-      console.log("Raw drivers data sample:", driversData.slice(0, 2))
+      setDates(sortedDates)
       setLicenseTypes(uniqueLicenseTypes)
       setBranches(uniqueBranches)
 
-      if (uniqueDates.length > 0 && !selectedDate) {
-        setSelectedDate(uniqueDates[0])
+      // Ustaw pierwszą dostępną datę jako wybraną, jeśli nie ma wybranej daty
+      if (sortedDates.length > 0 && !selectedDate) {
+        setSelectedDate(sortedDates[0])
       }
 
-      // Grupowanie danych - użyj course_dates.data
+      // Grupowanie danych - użyj course_dates.data lub start_date
       const grouped = {}
+
+      // Inicjalizuj wszystkie dostępne daty, nawet te bez kierowców
+      sortedDates.forEach((date) => {
+        grouped[date] = { moto: {}, auto: {}, zawodowa: {} }
+      })
+
+      // Dodaj kierowców do odpowiednich dat
       driversData.forEach((driver) => {
         const date = driver.course_dates?.data || driver.start_date
         const branch = driver.branch
         const academy = categorizeAcademy(driver.license_type)
 
-        if (!grouped[date]) {
-          grouped[date] = { moto: {}, auto: {}, zawodowa: {} }
+        // Sprawdź czy data kierowcy jest w dostępnych datach
+        if (sortedDates.includes(date)) {
+          if (!grouped[date][academy][branch]) {
+            grouped[date][academy][branch] = []
+          }
+          grouped[date][academy][branch].push(driver)
         }
-        if (!grouped[date][academy][branch]) {
-          grouped[date][academy][branch] = []
-        }
-
-        grouped[date][academy][branch].push(driver)
       })
 
       setGroupedDrivers(grouped)
 
-      // Inicjalizacja rozwinięcia wszystkich akademii
+      // Inicjalizacja rozwinięcia wszystkich akademii dla wszystkich dostępnych dat
       const initialExpandedAcademies = {}
-      uniqueDates.forEach((date) => {
+      sortedDates.forEach((date) => {
         initialExpandedAcademies[date] = {
           moto: true,
           auto: true,
@@ -535,7 +535,6 @@ export function ExcelView() {
                 ({dates.length} {dates.length === 1 ? "data" : "daty"})
               </span>
             </div>
-
             <div className="flex gap-2">
               <button
                 onClick={() => setIsCalendarOpen(true)}
@@ -544,7 +543,6 @@ export function ExcelView() {
                 <Calendar className="h-4 w-4" />
                 <span>{selectedDate ? formatDate(selectedDate) : "Wybierz datę"}</span>
               </button>
-
               <button
                 onClick={() => setIsAddDateModalOpen(true)}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -600,6 +598,7 @@ export function ExcelView() {
           </div>
         </div>
       </div>
+
       {/* Główna zawartość - 3 tabele akademii */}
       {selectedDate && (
         <motion.div
@@ -610,7 +609,7 @@ export function ExcelView() {
         >
           {Object.entries(academyConfig).map(([academyKey, config]) => {
             const academyData = groupedDrivers[selectedDate]?.[academyKey] || {}
-            const hasData = Object.keys(academyData).length > 0
+            const hasData = Object.keys(academyData).some((branch) => academyData[branch]?.length > 0)
             const isAcademyExpanded = expandedAcademies[selectedDate]?.[academyKey]
             const IconComponent = config.icon
 
@@ -695,6 +694,7 @@ export function ExcelView() {
                           <tr className="border-b border-gray-200">
                             {branches.map((branch, colIndex) => {
                               let branchDrivers = academyData[branch] || []
+
                               if (filterBranch !== "all" && branch !== filterBranch) {
                                 branchDrivers = []
                               }
@@ -744,10 +744,6 @@ export function ExcelView() {
                                                 <div className="font-medium text-gray-800 truncate text-sm">
                                                   {driver.name}
                                                 </div>
-                                                <div className="flex items-center gap-1 text-xs text-gray-500 truncate mt-1">
-                                                  <Phone className="h-3 w-3" />
-                                                  <span>{driver.phone}</span>
-                                                </div>
                                               </div>
                                             </div>
 
@@ -761,8 +757,6 @@ export function ExcelView() {
                                                 {driver.license_type}
                                               </span>
                                             </div>
-
-                                            
                                           </motion.div>
                                         )
                                       })}
@@ -784,23 +778,46 @@ export function ExcelView() {
           })}
         </motion.div>
       )}
-      {/* Brak danych */}
-      {selectedDate &&
-        Object.values(groupedDrivers[selectedDate] || {}).every((academy) => Object.keys(academy).length === 0) && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="flex flex-col items-center justify-center p-12 bg-white rounded-lg shadow-sm border border-gray-200"
+
+      {/* Brak wybranej daty */}
+      {!selectedDate && dates.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col items-center justify-center p-12 bg-white rounded-lg shadow-sm border border-gray-200"
+        >
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <Calendar className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-bold mb-2 text-gray-900">Wybierz datę</h3>
+          <p className="text-gray-500 text-center">Kliknij przycisk kalendarza, aby wybrać datę do wyświetlenia.</p>
+        </motion.div>
+      )}
+
+      {/* Brak dostępnych dat */}
+      {dates.length === 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="flex flex-col items-center justify-center p-12 bg-white rounded-lg shadow-sm border border-gray-200"
+        >
+          <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <Calendar className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-xl font-bold mb-2 text-gray-900">Brak dostępnych dat</h3>
+          <p className="text-gray-500 text-center mb-4">Nie znaleziono żadnych dostępnych dat.</p>
+          <button
+            onClick={() => setIsAddDateModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
           >
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
-              <Calendar className="w-8 h-8 text-gray-400" />
-            </div>
-            <h3 className="text-xl font-bold mb-2 text-gray-900">Brak danych</h3>
-            <p className="text-gray-500 text-center">Nie znaleziono kierowców dla wybranej daty.</p>
-          </motion.div>
-        )}
-      console.log("Rendering calendar with dates:", dates)
+            <Plus className="h-4 w-4" />
+            <span>Dodaj pierwszą datę</span>
+          </button>
+        </motion.div>
+      )}
+
       {/* Kalendarz */}
       <AnimatePresence>
         {isCalendarOpen && (
@@ -812,6 +829,7 @@ export function ExcelView() {
           />
         )}
       </AnimatePresence>
+
       {/* Modal dodawania daty */}
       <AnimatePresence>
         {isAddDateModalOpen && (
@@ -837,6 +855,7 @@ function DashboardSkeleton() {
           <div className="h-10 w-24 bg-gray-200 rounded-md"></div>
         </div>
       </div>
+
       <div className="space-y-8 animate-pulse">
         {[1, 2, 3].map((i) => (
           <div key={i} className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
