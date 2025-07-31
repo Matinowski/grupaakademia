@@ -10,7 +10,8 @@ export default function EventModal({
   calendars = [],
   drivers = [],
   instructors = [],
-  selectedInstructorId = null, // Add this prop
+  selectedInstructorId = null,
+  selectedCalendarId = null, // Add this new prop
   onClose,
   onSave,
   onDelete,
@@ -39,6 +40,7 @@ export default function EventModal({
 
   useEffect(() => {
     if (event) {
+      // Editing an existing event
       setEventData({
         ...event,
         date: formatDate(new Date(event.date)),
@@ -48,20 +50,24 @@ export default function EventModal({
         instructor_id: event.instructor_id || null,
       })
     } else if (date) {
-      // If a specific hour was clicked, set that as the start time
+      // Creating a new event
       let start_time = "09:00"
       let end_time = "10:00"
-
       if (date.getHours() !== 0) {
         start_time = `${date.getHours().toString().padStart(2, "0")}:00`
         end_time = `${(date.getHours() + 1).toString().padStart(2, "0")}:00`
       }
 
-      // Default to first visible calendar
-      const defaultCalendar = calendars.find((cal) => cal.visible) || calendars[0] || { id: 1, color: "#4285F4" }
+      // Determine default calendar based on selectedCalendarId or first visible/default
+      let defaultCalendar = calendars.find((cal) => cal.id === selectedCalendarId)
+      if (!defaultCalendar) {
+        defaultCalendar = calendars.find((cal) => cal.visible) || calendars[0] || { id: 1, color: "#4285F4" }
+      }
 
       setEventData({
         ...eventData,
+        title: "", // Clear title for new events
+        description: "", // Clear description for new events
         date: formatDate(date),
         start_time,
         end_time,
@@ -71,7 +77,7 @@ export default function EventModal({
         instructor_id: selectedInstructorId, // Automatically assign selected instructor
       })
     }
-  }, [event, date, calendars, selectedInstructorId]) // Add selectedInstructorId to dependencies
+  }, [event, date, calendars, selectedInstructorId, selectedCalendarId]) // Add selectedCalendarId to dependencies
 
   const formatDate = (date) => {
     const year = date.getFullYear()
@@ -82,7 +88,6 @@ export default function EventModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target
-
     if (name === "calendar_id") {
       const calendar_id = value
       const calendar = calendars.find((cal) => cal.id === calendar_id)
@@ -101,7 +106,6 @@ export default function EventModal({
 
   const handleSubmit = (e) => {
     e.preventDefault()
-
     const formattedEvent = {
       ...eventData,
       id: event?.id || undefined,
@@ -193,11 +197,9 @@ export default function EventModal({
             <X className="w-5 h-5" />
           </button>
         </div>
-
         <div className="w-full">
           <div className="px-4 pt-4">
             <div className="grid w-full grid-cols-3 bg-gray-100 rounded-md p-1">
-              
               <button
                 className={classNames(
                   "flex items-center justify-center py-2 px-3 text-sm rounded-md transition-colors",
@@ -230,7 +232,6 @@ export default function EventModal({
               </button>
             </div>
           </div>
-
           <form onSubmit={handleSubmit}>
             {activeTab === "basic" && (
               <div className="p-4 space-y-4">
@@ -249,7 +250,6 @@ export default function EventModal({
                     disabled={!canEdit}
                   />
                 </div>
-
                 <div>
                   <label htmlFor="calendar" className="block text-sm font-medium text-gray-700">
                     Kalendarz
@@ -272,7 +272,6 @@ export default function EventModal({
                     </select>
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="date" className="block text-sm font-medium text-gray-700">
@@ -290,7 +289,6 @@ export default function EventModal({
                     />
                   </div>
                 </div>
-
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="start_time" className="block text-sm font-medium text-gray-700">
@@ -306,7 +304,6 @@ export default function EventModal({
                       disabled={!canEdit}
                     />
                   </div>
-
                   <div>
                     <label htmlFor="end_time" className="block text-sm font-medium text-gray-700">
                       Godzina zakoncznienia
@@ -324,7 +321,6 @@ export default function EventModal({
                 </div>
               </div>
             )}
-
             {activeTab === "people" && (
               <div className="p-4 space-y-4">
                 <div>
@@ -365,7 +361,6 @@ export default function EventModal({
                       Przypisz kursanta
                     </button>
                   )}
-
                   <AnimatePresence>
                     {showDriverSearch && (
                       <motion.div
@@ -404,7 +399,6 @@ export default function EventModal({
                     )}
                   </AnimatePresence>
                 </div>
-
                 <div>
                   <label className="block text-sm font-medium text-gray-700">Instruktor</label>
                   {selectedInstructor ? (
@@ -445,7 +439,6 @@ export default function EventModal({
                       Przypisz Instruktora
                     </button>
                   )}
-
                   <AnimatePresence>
                     {showInstructorSearch && (
                       <motion.div
@@ -486,7 +479,6 @@ export default function EventModal({
                 </div>
               </div>
             )}
-
             {activeTab === "details" && (
               <div className="p-4 space-y-4">
                 <div>
@@ -505,7 +497,6 @@ export default function EventModal({
                 </div>
               </div>
             )}
-
             <div className="flex justify-between p-4 border-t">
               {event && canEdit ? (
                 <button
@@ -519,7 +510,6 @@ export default function EventModal({
               ) : (
                 <div></div>
               )}
-
               <div className="space-x-2">
                 <button
                   type="button"
