@@ -1,7 +1,6 @@
 "use client"
-
 import { useState, useEffect } from "react"
-import { X, Trash, User, Search, BookOpen, Calendar, Info } from "lucide-react"
+import { X, Trash, User, Search, BookOpen, Calendar, Info } from 'lucide-react'
 import { motion, AnimatePresence } from "framer-motion"
 
 export default function EventModal({
@@ -11,7 +10,7 @@ export default function EventModal({
   drivers = [],
   instructors = [],
   selectedInstructorId = null,
-  selectedCalendarId = null, // Add this new prop
+  selectedCalendarId = null,
   onClose,
   onSave,
   onDelete,
@@ -36,6 +35,16 @@ export default function EventModal({
   // Utility function to conditionally join classNames
   function classNames(...classes) {
     return classes.filter(Boolean).join(" ")
+  }
+
+  // Function to get calendar based on course type
+  const getCalendarByCourseType = (courseType) => {
+    if (courseType === "basic") {
+      return calendars.find((cal) => cal.name === "Podstawowy")
+    } else if (courseType === "additional") {
+      return calendars.find((cal) => cal.name === "Uzupełniający")
+    }
+    return null
   }
 
   useEffect(() => {
@@ -77,7 +86,7 @@ export default function EventModal({
         instructor_id: selectedInstructorId, // Automatically assign selected instructor
       })
     }
-  }, [event, date, calendars, selectedInstructorId, selectedCalendarId]) // Add selectedCalendarId to dependencies
+  }, [event, date, calendars, selectedInstructorId, selectedCalendarId])
 
   const formatDate = (date) => {
     const year = date.getFullYear()
@@ -88,20 +97,10 @@ export default function EventModal({
 
   const handleChange = (e) => {
     const { name, value } = e.target
-    if (name === "calendar_id") {
-      const calendar_id = value
-      const calendar = calendars.find((cal) => cal.id === calendar_id)
-      setEventData({
-        ...eventData,
-        color: calendar ? calendar.color : eventData.color,
-        calendar_id: calendar_id,
-      })
-    } else {
-      setEventData({
-        ...eventData,
-        [name]: value,
-      })
-    }
+    setEventData({
+      ...eventData,
+      [name]: value,
+    })
   }
 
   const handleSubmit = (e) => {
@@ -127,19 +126,28 @@ export default function EventModal({
   }
 
   const handleSelectDriver = (driver) => {
+    // Automatically select calendar based on driver's course_type
+    const appropriateCalendar = getCalendarByCourseType(driver.course_type)
+    
     setEventData({
       ...eventData,
       driver_id: driver.id,
       title: eventData.title || ``,
+      calendar_id: appropriateCalendar ? appropriateCalendar.id : eventData.calendar_id,
+      color: appropriateCalendar ? appropriateCalendar.color : eventData.color,
     })
     setShowDriverSearch(false)
     setSearchQuery("")
   }
 
   const handleRemoveDriver = () => {
+    // Reset to default calendar when removing driver
+    const defaultCalendar = calendars.find((cal) => cal.visible) || calendars[0] || { id: 1, color: "#4285F4" }
     setEventData({
       ...eventData,
       driver_id: null,
+      calendar_id: defaultCalendar.id,
+      color: defaultCalendar.color,
     })
   }
 
@@ -178,6 +186,7 @@ export default function EventModal({
   // Get the selected entities
   const selectedDriver = drivers.find((driver) => driver.id === eventData.driver_id)
   const selectedInstructor = instructors.find((instructor) => instructor.id === eventData.instructor_id)
+  const selectedCalendar = calendars.find((calendar) => calendar.id === eventData.calendar_id)
 
   // Check if user has permission to edit
   const canEdit = true
@@ -250,28 +259,25 @@ export default function EventModal({
                     disabled={!canEdit}
                   />
                 </div>
+                
+                {/* Display selected calendar (read-only) */}
                 <div>
-                  <label htmlFor="calendar" className="block text-sm font-medium text-gray-700">
-                    Kalendarz
+                  <label className="block text-sm font-medium text-gray-700">
+                    Kalendarz (automatycznie wybrany)
                   </label>
-                  <div className="flex items-center mt-1">
+                  <div className="flex items-center mt-1 p-2 border border-gray-200 rounded-md bg-gray-50">
                     <div className="w-4 h-4 rounded-full mr-2" style={{ backgroundColor: eventData.color }}></div>
-                    <select
-                      id="calendar"
-                      name="calendar_id"
-                      value={eventData.calendar_id}
-                      onChange={handleChange}
-                      className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                      disabled={!canEdit}
-                    >
-                      {calendars.map((calendar) => (
-                        <option key={calendar.id} value={calendar.id}>
-                          {calendar.name}
-                        </option>
-                      ))}
-                    </select>
+                    <span className="text-sm text-gray-700">
+                      {selectedCalendar ? selectedCalendar.name : "Brak wybranego kalendarza"}
+                    </span>
                   </div>
+                  {selectedDriver && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Kalendarz wybrany automatycznie na podstawie typu kursu: {selectedDriver.course_type === "basic" ? "Podstawowy" : "Uzupełniający"}
+                    </p>
+                  )}
                 </div>
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="date" className="block text-sm font-medium text-gray-700">
@@ -334,6 +340,9 @@ export default function EventModal({
                         <div>
                           <div className="font-medium">{selectedDriver.name}</div>
                           <div className="text-xs text-gray-500">{selectedDriver.phone}</div>
+                          <div className="text-xs text-blue-600">
+                            Kurs: {selectedDriver.course_type === "basic" ? "Podstawowy" : "Uzupełniający"}
+                          </div>
                         </div>
                       </div>
                       {canEdit && (
@@ -389,6 +398,9 @@ export default function EventModal({
                             >
                               <div className="font-medium">{driver.name}</div>
                               <div className="text-xs text-gray-500">{driver.phone}</div>
+                              <div className="text-xs text-blue-600">
+                                Kurs: {driver.course_type === "basic" ? "Podstawowy" : "Uzupełniający"}
+                              </div>
                             </div>
                           ))}
                           {filteredDrivers.length === 0 && (
