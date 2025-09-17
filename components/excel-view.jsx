@@ -401,11 +401,22 @@ export function ExcelView() {
       const sortedDates = availableDates.sort((a, b) => new Date(b).getTime() - new Date(a).getTime())
 
       const uniqueLicenseTypes = [...new Set(driversData.map((driver) => driver.license_type))]
-      const uniqueBranches = [...new Set(driversData.map((driver) => driver.branch))]
+      const allBranches = [
+  "Widzew",
+  "Bałuty",
+  "Zgierz",
+  "Górna",
+  "Dąbrowa",
+  "Retkinia",
+  "Centrum",
+  "Ozorków",
+]
+
+setBranches(allBranches)
 
       setDates(sortedDates)
       setLicenseTypes(uniqueLicenseTypes)
-      setBranches(uniqueBranches)
+
 
       // Ustaw pierwszą dostępną datę jako wybraną, jeśli nie ma wybranej daty
       if (sortedDates.length > 0 && !selectedDate) {

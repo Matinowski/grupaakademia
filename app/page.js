@@ -226,14 +226,6 @@ export default function LoginPage() {
 						</button>
 					</form>
 
-					<div className='mt-10 text-center'>
-						<div className='text-sm text-gray-600'>
-							Potrzebujesz pomocy?{' '}
-							<a href='#' className='text-blue-600 hover:text-blue-800'>
-								Skontaktuj się z administratorem
-							</a>
-						</div>
-					</div>
 
 					<div className='mt-10 pt-6 border-t border-gray-200'>
 						<div className='flex items-center justify-center'>
