@@ -27,10 +27,23 @@ import PdfViewer from "@/components/ui/pdf-viewer"
 const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia", "Centrum", "Ozorków"]
 
 export default function DriverProfiles({ drivers, events, dates }) {
+  const [signedUrls, setSignedUrls] = useState({})
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { user } = useAuth()
   console.log(dates)
+
+  const fetchSignedUrl = async (filePath) => {
+  try {
+    const res = await fetch(`/api/get-file-url?filePath=${encodeURIComponent(filePath)}&driverId=${selectedDriver.id}`)
+    if (!res.ok) throw new Error("Nie udało się pobrać pliku")
+    const data = await res.json()
+    return data.signedUrl
+  } catch (err) {
+    console.error(err)
+    return null
+  }
+}
 
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedDriver, setSelectedDriver] = useState(null)
@@ -170,6 +183,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
   const handleEditDriverSubmit = async (e) => {
     e.preventDefault()
     // Add installments to the edited driver object
+    console.log("Edited Driver before update:", editedDriver)
     const updatedDriver = {
       ...editedDriver,
       paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
@@ -273,14 +287,14 @@ export default function DriverProfiles({ drivers, events, dates }) {
     })
   }
 
-  const handleEditFileUpload = (e) => {
-    const files = Array.from(e.target.files)
-    setEditedDriver({
-      ...editedDriver,
-      paymentFiles: [...(editedDriver.paymentFiles || []), ...files],
-      newPaymentFiles: [...(editedDriver.newPaymentFiles || []), ...files],
-    })
-  }
+const handleEditFileUpload = (e) => {
+  const files = Array.from(e.target.files)
+  setEditedDriver((prev) => ({
+    ...prev,
+    newPaymentFiles: [...(prev.newPaymentFiles || []), ...files],
+  }))
+  e.target.value = "" // reset inputu
+}
 
   const removeFile = (index) => {
     const updatedFiles = [...newDriver.paymentFiles]
@@ -291,38 +305,34 @@ export default function DriverProfiles({ drivers, events, dates }) {
     })
   }
 
-  const removeEditFile = (index) => {
-    // Check if this is an existing file or a new file
-    const isExistingFile = index < editedDriver.paymentFiles?.length - (editedDriver.newPaymentFiles?.length || 0)
+const removeEditFile = (index) => {
+  const isExistingFile = index < editedDriver.paymentFiles?.length - (editedDriver.newPaymentFiles?.length || 0)
 
-    if (isExistingFile) {
-      // Mark the file for deletion in the database
-      const filesToDelete = editedDriver.filesToDelete || []
-      filesToDelete.push(editedDriver.paymentFiles[index])
-      setEditedDriver({
-        ...editedDriver,
-        filesToDelete,
-      })
-    }
-
-    const updatedFiles = [...(editedDriver.paymentFiles || [])]
-    updatedFiles.splice(index, 1)
-
-    // Also update newPaymentFiles if applicable
-    const updatedNewFiles = [...(editedDriver.newPaymentFiles || [])]
-    if (!isExistingFile) {
-      const newFileIndex = index - (editedDriver.paymentFiles?.length - updatedNewFiles.length)
-      if (newFileIndex >= 0) {
-        updatedNewFiles.splice(newFileIndex, 1)
-      }
-    }
-
-    setEditedDriver({
-      ...editedDriver,
-      paymentFiles: updatedFiles,
-      newPaymentFiles: updatedNewFiles,
-    })
+  // Nowa lista plików do usunięcia
+  const filesToDelete = [...(editedDriver.filesToDelete || [])]
+  if (isExistingFile) {
+    filesToDelete.push(editedDriver.paymentFiles[index])
   }
+
+  // Aktualizacja paymentFiles
+  const updatedFiles = [...(editedDriver.paymentFiles || [])]
+  updatedFiles.splice(index, 1)
+
+  // Aktualizacja newPaymentFiles
+  const updatedNewFiles = [...(editedDriver.newPaymentFiles || [])]
+  if (!isExistingFile) {
+    const newFileIndex = index - (editedDriver.paymentFiles?.length - updatedNewFiles.length)
+    if (newFileIndex >= 0) updatedNewFiles.splice(newFileIndex, 1)
+  }
+
+  // Jedno setState z wszystkimi zmianami
+  setEditedDriver({
+    ...editedDriver,
+    paymentFiles: updatedFiles,
+    newPaymentFiles: updatedNewFiles,
+    filesToDelete, // <-- teraz pole będzie istniało
+  })
+}
 
   const startEditMode = () => {
     setEditedDriver({
@@ -364,12 +374,9 @@ export default function DriverProfiles({ drivers, events, dates }) {
   }
 
   // Sprawdź, czy plik jest PDF-em
+
   const isPdfFile = (file) => {
-    return (
-      file.name.toLowerCase().endsWith(".pdf") ||
-      file.type === "application/pdf" ||
-      (file.path && file.path.toLowerCase().endsWith(".pdf"))
-    )
+    return file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
   }
 
   return (
@@ -576,45 +583,60 @@ export default function DriverProfiles({ drivers, events, dates }) {
               </div>
             </div>
 
-            {selectedDriver.paymentFiles && selectedDriver.paymentFiles.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-medium mb-2">Potwierdzenia Płatności</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {selectedDriver.paymentFiles.map((file, index) => (
-                    <div key={index} className="border rounded-md p-3 flex items-center justify-between">
-                      <div className="flex items-center overflow-hidden">
-                        <FileText className="w-5 h-5 mr-2 text-blue-500 flex-shrink-0" />
-                        <div className="overflow-hidden">
-                          <div className="font-medium truncate">{file.name}</div>
-                          <div className="text-xs text-gray-500">
-                            {new Date(file.lastModified).toLocaleDateString()}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        {isPdfFile(file) && (
-                          <button
-                            onClick={() => handlePreviewFile(file)}
-                            className="p-1 text-blue-600 hover:text-blue-800"
-                            title="Podgląd"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                        )}
-                        <a
-                          href={file.path}
-                          download={file.name}
-                          className="p-1 text-blue-600 hover:text-blue-800"
-                          title="Pobierz"
-                        >
-                          <Download className="w-4 h-4" />
-                        </a>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+           {selectedDriver.paymentFiles.map((file, index) => (
+  <div key={index} className="border rounded-md p-3 flex items-center justify-between">
+    <div className="flex items-center overflow-hidden">
+      <FileText className="w-5 h-5 mr-2 text-blue-500 flex-shrink-0" />
+      <div className="overflow-hidden">
+        <div className="font-medium truncate">{file.name}</div>
+        <div className="text-xs text-gray-500">
+          {new Date(file.lastModified).toLocaleDateString()}
+        </div>
+      </div>
+    </div>
+    <div className="flex gap-2">
+      {isPdfFile(file) && (
+        <button
+          onClick={async () => {
+            let url = null
+            if (!url) {
+              url = await fetchSignedUrl(file.path)
+              console.log("Fetched URL:", url)
+              setSignedUrls(prev => ({ ...prev, [file.path]: url }))
+            }
+            console.log("Preview URL:", file)
+            setPdfPreview({ ...file, path: url })
+          }}
+          className="p-1 text-blue-600 hover:text-blue-800"
+          title="Podgląd"
+        >
+          <Eye className="w-4 h-4" />
+        </button>
+      )}
+      <button
+        onClick={async () => {
+          let url = signedUrls[file.path]
+          if (!url) {
+            url = await fetchSignedUrl(file.path)
+            setSignedUrls(prev => ({ ...prev, [file.path]: url }))
+          }
+          // Pobierz plik przez browser
+          const link = document.createElement("a")
+          link.href = url
+          link.download = file.name
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+        }}
+        className="p-1 text-blue-600 hover:text-blue-800"
+        title="Pobierz"
+      >
+        <Download className="w-4 h-4" />
+      </button>
+    </div>
+  </div>
+))}
+
 
             <div className="mb-6">
               <h3 className="text-lg font-medium mb-2">Notatki</h3>

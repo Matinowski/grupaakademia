@@ -41,40 +41,8 @@ export async function middleware(req) {
       return NextResponse.next()
 
   }
-  if(req.nextUrl.pathname.startsWith('/api/auth/')) { 
-    console.log("jestem w middleware login")
-  }
-  if(req.nextUrl.pathname.startsWith('/api/init')) { 
-    const cookieStore = await cookies()
-    const sessionToken = cookieStore.get("session-token")
-      if (!sessionToken) {
-        return NextResponse.json({ user: null }, { status: 401 })
-      }
-    
-      const { data: session, error: sessionError } = await supabaseAdmin
-        .from("sessions")
-        .select("user_id, expires_at")
-        .eq("session_token", sessionToken.value)
-        .single()
-    
-      if (sessionError || !session || new Date(session.expires_at) < new Date()) {
-        return NextResponse.json({ user: null }, { status: 401 })
-      }
-    
-      const { data: user, error: userError } = await supabaseAdmin
-        .from("users")
-        .select("role")
-        .eq("id", session.user_id)
-        .single()
-    
-      if (userError || !user) {
-        return NextResponse.json({ user: null, test:"asd" }, { status: 401 })
-      }
 
-      return NextResponse.next()
-
-  }
-  if(req.nextUrl.pathname.startsWith('/api/realtime')) { 
+  if(req.nextUrl.pathname.startsWith('/api') && !req.nextUrl.pathname.startsWith('/api/auth/')) { 
     const cookieStore = await cookies()
     const sessionToken = cookieStore.get("session-token")
       if (!sessionToken) {
@@ -105,6 +73,34 @@ export async function middleware(req) {
 
   }
 
+
+  if(req.nextUrl.pathname.startsWith('/dashboard')) { 
+    const cookieStore = await cookies()
+    const sessionToken = cookieStore.get("session-token")
+
+      if (!sessionToken) {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
+      const { data: session, error: sessionError } = await supabaseAdmin
+        .from("sessions")
+        .select("user_id, expires_at")
+        .eq("session_token", sessionToken.value)
+        .single()
+      if (sessionError || !session || new Date(session.expires_at) < new Date()) {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
+      const { data: user, error: userError } = await supabaseAdmin
+        .from("users")
+        .select("role")
+        .eq("id", session.user_id)
+        .single()
+      if (userError || !user) {
+        return NextResponse.redirect(new URL('/', req.url))
+      }
+      return NextResponse.next()
+  }
+
+ 
 
 
 

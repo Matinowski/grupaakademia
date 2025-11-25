@@ -1,52 +1,47 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { supabaseAdmin, uploadFile, deleteFile } from "@/lib/supabase"
+import { supabaseAdmin, uploadFile, deleteFile, getFileUrl } from "@/lib/supabase"
+import { requireAuth } from "@/lib/auth"
 
+// Pobieranie wszystkich kierowców
 export async function getDrivers() {
   try {
-    const { data: drivers, error } = await supabaseAdmin.from("drivers").select("*").order("name")
+    const user = await requireAuth()
 
+    const { data: drivers, error } = await supabaseAdmin.from("drivers").select("*").order("name")
     if (error) throw error
 
     const driversWithRelations = await Promise.all(
       drivers.map(async (driver) => {
-        // Pobierz raty płatności
         const { data: paymentInstallments, error: installmentsError } = await supabaseAdmin
           .from("payment_installments")
           .select("*")
           .eq("driver_id", driver.id)
           .order("hours")
-
         if (installmentsError) throw installmentsError
 
-        // Pobierz pliki płatności
         const { data: paymentFiles, error: filesError } = await supabaseAdmin
           .from("payment_files")
           .select("*")
           .eq("driver_id", driver.id)
-
         if (filesError) throw filesError
 
-        // Pobierz płatności
         const { data: payments, error: paymentsError } = await supabaseAdmin
           .from("payments")
           .select("*, created_by_user:created_by (id, name, surname)")
           .eq("driver_id", driver.id)
           .order("payment_date", { ascending: false })
-
         if (paymentsError) throw paymentsError
 
-        // Pobierz nadchodzące lekcje + dane instruktora
         const { data: events, error: eventsError } = await supabaseAdmin
           .from("events")
           .select("*, instructor:users (id, name, surname, email, phone)")
           .eq("driver_id", driver.id)
           .order("date", { ascending: false })
-        if (eventsError) throw paymentsError
-        // Pobierz dane przypisanego instruktora
-        let instructorData = null
+        if (eventsError) throw eventsError
 
+        let instructorData = null
 
         return {
           ...driver,
@@ -65,35 +60,34 @@ export async function getDrivers() {
               }))
             : [],
         }
-      }),
+      })
     )
 
     return driversWithRelations
   } catch (error) {
     console.error("Błąd podczas pobierania kierowców:", error)
-    return []
+    return { error: "UNAUTHORIZED" }
   }
 }
 
 // Pobieranie wszystkich instruktorów
 export async function getInstructors() {
   try {
-    // Pobierz użytkowników, którzy są instruktorami (mają wpis w tabeli instructors)
+    const user = await requireAuth()
+
     const { data, error } = await supabaseAdmin
       .from("users")
       .select(`
-        id, 
-        name, 
-        surname, 
-        phone, 
-        email, 
+        id,
+        name,
+        surname,
+        phone,
+        email,
         instructors!inner(category, additional_info)
       `)
       .order("name")
-
     if (error) throw error
 
-    // Przekształć dane do formatu oczekiwanego przez frontend
     return data.map((user) => ({
       id: user.id,
       name: `${user.name} ${user.surname}`,
@@ -105,16 +99,16 @@ export async function getInstructors() {
     }))
   } catch (error) {
     console.error("Błąd podczas pobierania instruktorów:", error)
-    return []
+    return { error: "UNAUTHORIZED" }
   }
 }
 
 // Dodawanie nowego kierowcy
 export async function addDriver(driverData) {
-
-  console.log("Dodawanie kierowcy:", driverData.price)
   try {
-    // Przygotuj dane kierowcy do zapisu
+    const user = await requireAuth()
+    console.log("Dodawanie kierowcy:", driverData.price)
+
     const driverToInsert = {
       name: driverData.name,
       phone: driverData.phone,
@@ -132,33 +126,28 @@ export async function addDriver(driverData) {
       price: driverData.price || null,
     }
 
-    // Dodaj kierowcę do bazy danych
     const { data: newDriver, error } = await supabaseAdmin.from("drivers").insert(driverToInsert).select().single()
-
     if (error) throw error
 
-    // Dodaj raty płatności, jeśli istnieją
-    if (driverData.paymentInstallments && driverData.paymentInstallments.length > 0) {
+    // Payment installments
+    if (driverData.paymentInstallments?.length > 0) {
       const installmentsToInsert = driverData.paymentInstallments.map((installment) => ({
         driver_id: newDriver.id,
         hours: installment.hours,
         amount: installment.amount,
       }))
-
       const { error: installmentsError } = await supabaseAdmin.from("payment_installments").insert(installmentsToInsert)
-
       if (installmentsError) throw installmentsError
     }
 
-    // Prześlij pliki płatności, jeśli istnieją
-    if (driverData.paymentFiles && driverData.paymentFiles.length > 0) {
+    // Payment files
+    if (driverData.paymentFiles?.length > 0) {
       const filePromises = driverData.paymentFiles.map(async (file) => {
-        const fileData = await uploadFile(file, "payment-files", `drivers/${newDriver.id}`)
-
+        const fileData = await uploadFile(file, "payment-files", `drivers/${newDriver.id}`, newDriver.id)
         return {
           driver_id: newDriver.id,
           file_name: fileData.fileName,
-          file_path: fileData.publicUrl,
+          file_path: fileData.filePath,
           file_type: fileData.fileType,
           file_size: fileData.fileSize,
           upload_date: new Date().toISOString(),
@@ -166,9 +155,7 @@ export async function addDriver(driverData) {
       })
 
       const filesToInsert = await Promise.all(filePromises)
-
       const { error: filesError } = await supabaseAdmin.from("payment_files").insert(filesToInsert)
-
       if (filesError) throw filesError
     }
 
@@ -183,8 +170,10 @@ export async function addDriver(driverData) {
 // Aktualizacja istniejącego kierowcy
 export async function updateDriver(driverData) {
   try {
-    // Przygotuj dane kierowcy do aktualizacji
+    const user = await requireAuth()
+
     const driverToUpdate = {
+      id: driverData.id,
       name: driverData.name,
       phone: driverData.phone,
       email: driverData.email,
@@ -201,22 +190,13 @@ export async function updateDriver(driverData) {
       price: driverData.price || null,
     }
 
-    // Aktualizuj kierowcę w bazie danych
     const { error } = await supabaseAdmin.from("drivers").update(driverToUpdate).eq("id", driverData.id)
-
     if (error) throw error
 
-    // Usuń istniejące raty płatności i dodaj nowe
+    // Payment installments
     if (driverData.payment_type === "installments" && driverData.paymentInstallments) {
-      // Usuń istniejące raty
-      const { error: deleteError } = await supabaseAdmin
-        .from("payment_installments")
-        .delete()
-        .eq("driver_id", driverData.id)
+      await supabaseAdmin.from("payment_installments").delete().eq("driver_id", driverData.id)
 
-      if (deleteError) throw deleteError
-
-      // Dodaj nowe raty
       const installmentsToInsert = driverData.paymentInstallments.map((installment) => ({
         driver_id: driverData.id,
         hours: installment.hours,
@@ -225,20 +205,18 @@ export async function updateDriver(driverData) {
 
       if (installmentsToInsert.length > 0) {
         const { error: insertError } = await supabaseAdmin.from("payment_installments").insert(installmentsToInsert)
-
         if (insertError) throw insertError
       }
     }
 
-    // Prześlij nowe pliki płatności, jeśli istnieją
-    if (driverData.newPaymentFiles && driverData.newPaymentFiles.length > 0) {
+    // New payment files
+    if (driverData.newPaymentFiles?.length > 0) {
       const filePromises = driverData.newPaymentFiles.map(async (file) => {
-        const fileData = await uploadFile(file, "payment-files", `drivers/${driverData.id}`)
-
+        const fileData = await uploadFile(file, "payment-files", `drivers/${driverData.id}`, driverData.id)
         return {
           driver_id: driverData.id,
           file_name: fileData.fileName,
-          file_path: fileData.publicUrl,
+          file_path: fileData.filePath,
           file_type: fileData.fileType,
           file_size: fileData.fileSize,
           upload_date: new Date().toISOString(),
@@ -246,32 +224,31 @@ export async function updateDriver(driverData) {
       })
 
       const filesToInsert = await Promise.all(filePromises)
-
       if (filesToInsert.length > 0) {
         const { error: filesError } = await supabaseAdmin.from("payment_files").insert(filesToInsert)
-
         if (filesError) throw filesError
       }
     }
 
-    // Obsługa usuwania plików
-    if (driverData.filesToDelete && driverData.filesToDelete.length > 0) {
-      // Usuń pliki z bazy danych
-      const fileIds = driverData.filesToDelete.map((file) => file.id)
+    // Delete files
+  // Delete files
+console.log("Driver data for deletion", driverData)
 
-      const { error: deleteDbError } = await supabaseAdmin.from("payment_files").delete().in("id", fileIds)
+if (driverData.filesToDelete?.length > 0) {
+  const paths = driverData.filesToDelete.map((file) => file.path)
 
-      if (deleteDbError) throw deleteDbError
+  // Usuń z bazy po path
+  const { error: deleteDbError } = await supabaseAdmin
+    .from("payment_files")
+    .delete()
+    .in("file_path", paths) // <-- upewnij się, że kolumna nazywa się file_path
+  if (deleteDbError) throw deleteDbError
 
-      // Usuń pliki z Supabase Storage
-      for (const file of driverData.filesToDelete) {
-        // Wyodrębnij ścieżkę pliku z publicUrl
-        const filePathMatch = file.path.match(/\/storage\/v1\/object\/public\/payment-files\/(.+)$/)
-        if (filePathMatch && filePathMatch[1]) {
-          await deleteFile("payment-files", filePathMatch[1])
-        }
-      }
-    }
+  // Usuń z storage
+  for (const file of driverData.filesToDelete) {
+    await deleteFile("payment-files", file.path, driverData.id)
+  }
+}
 
     revalidatePath("/")
     return { success: true }
@@ -284,27 +261,21 @@ export async function updateDriver(driverData) {
 // Usuwanie kierowcy
 export async function deleteDriver(driver_id) {
   try {
-    // Pobierz pliki kierowcy przed usunięciem
+    const user = await requireAuth()
+
     const { data: driverFiles, error: filesError } = await supabaseAdmin
       .from("payment_files")
       .select("file_path")
       .eq("driver_id", driver_id)
-
     if (filesError) throw filesError
 
-    // Usuń kierowcę (kaskadowe usuwanie powiązanych danych jest obsługiwane przez ograniczenia ON DELETE CASCADE)
     const { error } = await supabaseAdmin.from("drivers").delete().eq("id", driver_id)
-
     if (error) throw error
 
-    // Usuń pliki z Supabase Storage
-    if (driverFiles && driverFiles.length > 0) {
+    if (driverFiles?.length > 0) {
       for (const file of driverFiles) {
-        // Wyodrębnij ścieżkę pliku z publicUrl
         const filePathMatch = file.file_path.match(/\/storage\/v1\/object\/public\/payment-files\/(.+)$/)
-        if (filePathMatch && filePathMatch[1]) {
-          await deleteFile("payment-files", filePathMatch[1])
-        }
+        if (filePathMatch?.[1]) await deleteFile("payment-files", filePathMatch[1], driver_id)
       }
     }
 
