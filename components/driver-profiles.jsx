@@ -730,6 +730,8 @@ const removeEditFile = (index) => {
                     <option value="KUP">KUP</option>
                     <option value="D">D</option>
                     <option value="Wózek">Wózek Widłowy</option>
+                    <option value="SzkolenieOkresowe">Szkolenie okresowe</option>
+                     <option value="C&C+E&KWP">C & C + E & KWP </option>
                   </select>
                 </div>
                 <div>
@@ -1050,6 +1052,8 @@ const removeEditFile = (index) => {
                     <option value="KUP">KUP</option>
                     <option value="D">D</option>
                     <option value="Wózek">Wózek Widłowy</option>
+                    <option value="SzkolenieOkresowe">Szkolenie okresowe</option>
+                    <option value="C&C+E&KWP">C & C + E & KWP </option>
                   </select>
                 </div>
                 <div>

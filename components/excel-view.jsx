@@ -55,7 +55,11 @@ function categorizeAcademy(licenseType) {
     licenseType.startsWith("C") ||
     licenseType.startsWith("D") ||
     licenseType.startsWith("T") ||
-    licenseType.startsWith("E")
+    licenseType.startsWith("E") ||
+    licenseType.startsWith("K") ||
+     licenseType.startsWith("W") ||
+    licenseType === "SzkolenieOkresowe"
+
   ) {
     return "zawodowa"
   }
