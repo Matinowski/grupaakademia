@@ -46,139 +46,161 @@ export default function DrivingSchoolApp() {
   const [showEventModal, setShowEventModal] = useState(false)
   const [selectedDate, setSelectedDate] = useState(null)
   const [selectedEvent, setSelectedEvent] = useState(null)
-
-  // Add this new state variable after the existing state declarations
   const [selectedInstructorId, setSelectedInstructorId] = useState(null)
 
-  // Update the state management for instructors and drivers filtering
+  // Filtering state
   const [selectedInstructors, setSelectedInstructors] = useState({})
   const [selectedDrivers, setSelectedDrivers] = useState({})
 
   // Fetch all data on component mount
   useEffect(() => {
+    const loadAllData = async () => {
+      try {
+        showLoading("Inicjalizacja aplikacji...", 0)
+        updateLoading("Pobieranie danych początkowych", 10)
+
+        // Instructors & Calendars
+        const initRes = await fetch("/api/init/getinitdata")
+        const initData = await initRes.json()
+        if (initData.error) throw new Error(initData.error)
+        setInstructors(initData.instructors || [])
+        const calendarsWithDefaultVisibility = (initData.calendars || []).map((cal) => ({
+          ...cal,
+          visible: false,
+        }))
+        setCalendars(calendarsWithDefaultVisibility)
+
+        // Events
+        updateLoading("Pobieranie wydarzeń", 30)
+        const currentMonth = currentDate.getMonth() + 1
+        const currentYear = currentDate.getFullYear()
+        const eventsRes = await fetch(`/api/events?month=${currentMonth}&year=${currentYear}`)
+        const eventsData = await eventsRes.json()
+        if (eventsData.error) throw new Error(eventsData.error)
+        const formattedEvents = (eventsData.events || []).map((event) => ({
+          ...event,
+          date: new Date(event.date),
+        }))
+        setEvents(formattedEvents)
+
+        // Drivers
+        updateLoading("Pobieranie danych kursantów", 60)
+        const driversResult = await getDrivers()
+        setDrivers(Array.isArray(driversResult) ? driversResult : [])
+        console.log("Loaded drivers:", driversResult)
+        // Dates
+        updateLoading("Pobieranie dat kursów", 70)
+        const datesRes = await fetch("/api/dates")
+        const datesData = await datesRes.json()
+        setDates(datesData || [])
+
+        updateLoading("Pobieranie zakończone, ładowanie aplikacji...", 90)
+        updateLoading("Gotowe!", 100)
+        setTimeout(() => {
+          hideLoading()
+          setIsLoading(false)
+          notification.success("Aplikacja gotowa", "Wszystkie dane zostały pomyślnie załadowane")
+        }, 500)
+      } catch (error) {
+        hideLoading()
+        setIsLoading(false)
+        notification.error("Błąd ładowania danych", error.message || "Wystąpił problem podczas ładowania danych")
+        console.error("Error loading data:", error)
+      }
+    }
+
     loadAllData()
-    // Subscribe to changes in 'instructors' table
+
+    // Subscriptions
     const instructorSubscription = supabase
       .channel("custom-instructors-channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "instructors",
-        },
-        (payload) => {
-          fetch("/api/realtime/instructors")
-            .then((res) => res.json())
-            .then((data) => {
-              setInstructors(data.instructors || [])
-              notification.warning("Zmiana w tabeli instruktorów", "Zaktualizowano dane instruktorów")
-            })
-        },
+        { event: "*", schema: "public", table: "instructors" },
+        async () => {
+          try {
+            const res = await fetch("/api/realtime/instructors")
+            const data = await res.json()
+            setInstructors(data.instructors || [])
+            notification.warning("Zmiana w tabeli instruktorów", "Zaktualizowano dane instruktorów")
+          } catch (error) {
+            console.error(error)
+          }
+        }
       )
       .subscribe()
 
-    // Subscribe to changes in 'drivers' table
     const driverSubscription = supabase
       .channel("custom-drivers-channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "drivers",
-        },
-        async (payload) => {
-          const result = await getDrivers()
-          if (result) {
+        { event: "*", schema: "public", table: "drivers" },
+        async () => {
+          try {
+            const result = await getDrivers()
+            setDrivers(Array.isArray(result) ? result : [])
             notification.warning("Zmiana w tabeli kierowców", "Zaktualizowano dane kierowców")
-            setDrivers(result)
-          } else {
-            notification.error("Błąd", "Nie udało się pobrać danych kierowców, spróbuj ponownie")
-            throw new Error("Nie udało się pobrać danych kierowców")
+          } catch (error) {
+            notification.error("Błąd", "Nie udało się pobrać danych kierowców")
+            console.error(error)
           }
-        },
+        }
       )
       .subscribe()
 
-        const datesSubscription = supabase
-      .channel("custom-dates-channel")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "course_dates",
-        },
-        async (payload) => {
-
-          await fetch("/api/dates")
-            .then((res) => res.json())
-            .then((data) => {
-              setDates(data || [])
-              notification.info("Daty kursów", "Zaktualizowano daty kursów")
-            })
-            .catch((error) => {
-              notification.error("Błąd", "Nie udało się pobrać dat")
-              console.error("Error fetching events:", error)
-            })
-
-
-
-       
-       
-  
-        },
-      )
-      .subscribe()
-
-    // Subscribe to changes in 'payments' table
     const paymentSubscription = supabase
       .channel("custom-payments-channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "payments",
-        },
-        async (payload) => {
-          const result = await getDrivers()
-          if (result) {
+        { event: "*", schema: "public", table: "payments" },
+        async () => {
+          try {
+            const result = await getDrivers()
+            setDrivers(Array.isArray(result) ? result : [])
             notification.warning("Zmiana w tabeli kierowców", "Zaktualizowano dane kierowców (płatności)")
-            setDrivers(result)
-          } else {
-            notification.error("Błąd", "Nie udało się pobrać danych kierowców, spróbuj ponownie (płatności)")
-            throw new Error("Nie udało się pobrać danych kierowców")
+          } catch (error) {
+            notification.error("Błąd", "Nie udało się pobrać danych kierowców (płatności)")
+            console.error(error)
           }
-        },
+        }
       )
       .subscribe()
 
-    // Subscribe to changes in 'events' table
+    const datesSubscription = supabase
+      .channel("custom-dates-channel")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "course_dates" },
+        async () => {
+          try {
+            const res = await fetch("/api/dates")
+            const data = await res.json()
+            setDates(data || [])
+            notification.info("Daty kursów", "Zaktualizowano daty kursów")
+          } catch (error) {
+            notification.error("Błąd", "Nie udało się pobrać dat")
+            console.error(error)
+          }
+        }
+      )
+      .subscribe()
+
     const eventsSubscription = supabase
       .channel("custom-events-channel")
       .on(
         "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "events",
-        },
-        async (payload) => {
-          // Fetch updated events
-          console.log("Event change detected:", payload)
-          fetch("/api/events")
-            .then((res) => res.json())
-            .then((data) => {
-              setEvents(data.events || [])
-              notification.info("Kalendarz", "Zaktualizowano wydarzenia w kalendarzu")
-            })
-            .catch((error) => {
-              notification.error("Błąd", "Nie udało się pobrać wydarzeń")
-              console.error("Error fetching events:", error)
-            })
-        },
+        { event: "*", schema: "public", table: "events" },
+        async () => {
+          try {
+            const res = await fetch("/api/events")
+            const data = await res.json()
+            setEvents(data.events || [])
+            notification.info("Kalendarz", "Zaktualizowano wydarzenia w kalendarzu")
+          } catch (error) {
+            notification.error("Błąd", "Nie udało się pobrać wydarzeń")
+            console.error(error)
+          }
+        }
       )
       .subscribe()
 
@@ -191,107 +213,8 @@ export default function DrivingSchoolApp() {
     }
   }, [])
 
-  // Function to load all data with loading indicators
-  const loadAllData = async () => {
-    try {
-      showLoading("Inicjalizacja aplikacji...", 0)
-      updateLoading("Pobieranie danych początkowych", 10)
-      await fetch("/api/init/getinitdata")
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.error) {
-            throw new Error(data.error)
-          }
-          console.log("Initial data loaded:", data)
-          setInstructors(data.instructors || [])
-          // Ustaw wszystkie kalendarze jako niewidoczne domyślnie
-          const calendarsWithDefaultVisibility = (data.calendars || []).map((calendar) => ({
-            ...calendar,
-            visible: false,
-          }))
-          setCalendars(calendarsWithDefaultVisibility)
-        })
-        .catch((error) => {
-          hideLoading()
-          setIsLoading(false)
-          notification.error("Błąd ładowania danych", error.message || "Wystąpił problem podczas ładowania danych")
-          console.error("Error loading data:", error)
-        })
+  // Reszta kodu (renderowanie, obsługa modali, filtrowanie, itp.) pozostaje bez zmian
 
-      // Load events for current month
-      updateLoading("Pobieranie wydarzeń", 30)
-      const currentMonth = currentDate.getMonth() + 1
-      const currentYear = currentDate.getFullYear()
-      await fetch(`/api/events?month=${currentMonth}&year=${currentYear}`)
-        .then((response) => response.json())
-        .then((data) => {
-          if (data.error) {
-            throw new Error(data.error)
-          }
-          // Transform API events to match component format if needed
-          const formattedEvents = data.events.map((event) => ({
-            id: event.id,
-            title: event.title,
-            description: event.description || "",
-            date: new Date(event.date),
-            start_time: event.start_time,
-            end_time: event.end_time,
-            calendar_id: event.calendar_id,
-            driver_id: event.driver_id,
-            instructor_id: event.instructor_id,
-            // Add any additional properties needed by the component
-            driver: event.driver,
-            instructor: event.instructor,
-            calendar: event.calendar,
-            payment_due: event.payment_due || false,
-            created_at: event.created_at,
-            is_too_late: event.is_too_late,
-          }))
-          setEvents(formattedEvents)
-          console.log("Events loaded:", formattedEvents)
-        })
-        .catch((error) => {
-          notification.error("Błąd ładowania wydarzeń", error.message || "Wystąpił problem podczas ładowania wydarzeń")
-          console.error("Error loading events:", error)
-        })
-
-      // Load drivers
-      updateLoading("Pobieranie danych kursantów", 60)
-      const result = await getDrivers()
-      if (result) {
-        setDrivers(result)
-      } else {
-        throw new Error("Nie udało się pobrać danych kierowców")
-      }
-
-      updateLoading("Pobieranie dat kursów", 70)
-      await fetch("/api/dates")
-        .then((response) => response.json())
-        .then((data) => {
-          setDates(data || [])
-        })
-        .catch((error) => {
-          notification.error(
-            "Błąd ładowania dat kursów",
-            error.message || "Wystąpił problem podczas ładowania dat kursów",
-          )
-          console.error("Error loading dates:", error)
-        })
-
-      updateLoading("Pobieranie zakończone, ładowanie aplikacji...", 90)
-      updateLoading("Gotowe!", 100)
-      setTimeout(() => {
-        hideLoading()
-        setIsLoading(false)
-        notification.success("Aplikacja gotowa", "Wszystkie dane zostały pomyślnie załadowane")
-      }, 500)
-    } catch (error) {
-      hideLoading()
-      setIsLoading(false)
-      notification.error("Błąd ładowania danych", error.message || "Wystąpił problem podczas ładowania danych")
-      console.error("Error loading data:", error)
-    }
-  }
 
   // Function to load events for the current month
   const loadEvents = async () => {

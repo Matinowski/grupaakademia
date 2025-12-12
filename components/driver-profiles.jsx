@@ -94,7 +94,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
   }, [drivers]) // Uruchom efekty tylko wtedy, gdy lista drivers się zmienia
 
   // Filtruj kierowców na podstawie zapytania wyszukiwania
-  const filteredDrivers = drivers.filter(
+  const filteredDrivers = drivers?.filter(
     (driver) =>
       driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       driver.phone.includes(searchQuery) ||
