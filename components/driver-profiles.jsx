@@ -141,6 +141,9 @@ export default function DriverProfiles({ drivers, events, dates }) {
   const handleAddDriverSubmit = async (e) => {
     e.preventDefault()
     // Add installments to the new driver object
+    if (newDriver.course_type !== "basic") {
+  newDriver.start_date = null;
+}
     const driverWithInstallments = {
       ...newDriver,
       branch: newDriver.branch || "Widzew", // Upewnij się, że branch nie jest pusty
@@ -183,7 +186,11 @@ export default function DriverProfiles({ drivers, events, dates }) {
   const handleEditDriverSubmit = async (e) => {
     e.preventDefault()
     // Add installments to the edited driver object
+    if (editedDriver.course_type !== "basic") {
+  editedDriver.start_date = null;
+}
     console.log("Edited Driver before update:", editedDriver)
+
     const updatedDriver = {
       ...editedDriver,
       paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
@@ -524,13 +531,21 @@ const removeEditFile = (index) => {
                   <div>{selectedDriver.email}</div>
                 </div>
               </div>
+                { selectedDriver.course_type === "basic" ? (
               <div className="flex items-center">
                 <Calendar className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
-                  <div className="text-sm text-gray-500">Data Rozpoczęcia</div>
+                
+                   
+                      <>
+                       <div className="text-sm text-gray-500">Data Rozpoczęcia</div>
                   <div>{getDateStringFromId(selectedDriver.start_date)}</div>
+                      </>
+                 
+                
                 </div>
               </div>
+                 ) : null  }
               <div className="flex items-center">
                 <FileText className="w-5 h-5 mr-2 text-gray-400" />
                 <div>
@@ -660,7 +675,7 @@ const removeEditFile = (index) => {
                         </div>
                         <div className="text-sm text-gray-500">
                           {Number(calculateDuration(lesson.start_time, lesson.end_time))} godzin z{" "}
-                          {lesson.instructor.name + " " + lesson.instructor.surname}
+                          {lesson.instructor?.name + " " + lesson.instructor?.surname}
                         </div>
                       </div>
                     </div>
@@ -732,6 +747,7 @@ const removeEditFile = (index) => {
                     <option value="Wózek">Wózek Widłowy</option>
                     <option value="SzkolenieOkresowe">Szkolenie okresowe</option>
                      <option value="C&C+E&KWP">C & C + E & KWP </option>
+                     <option value="B+E">B+E</option>
                   </select>
                 </div>
                 <div>
@@ -746,11 +762,13 @@ const removeEditFile = (index) => {
                     <option value="additional">Dodatkowy</option>
                   </select>
                 </div>
-                <div>
+                {
+                   editedDriver.course_type === "basic" ? (
+                      <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Rozpoczęcia</label>
                   <select
                     name="start_date"
-                    value={editedDriver.start_date}
+                    value={editedDriver?.start_date}
                     onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
@@ -763,6 +781,10 @@ const removeEditFile = (index) => {
                     ))}
                   </select>
                 </div>
+                   ) : ( 
+                      <input type="hidden" name="start_date" value={null} />
+                    )
+                }
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Zawarcia Umowy</label>
                   <input
@@ -1054,6 +1076,7 @@ const removeEditFile = (index) => {
                     <option value="Wózek">Wózek Widłowy</option>
                     <option value="SzkolenieOkresowe">Szkolenie okresowe</option>
                     <option value="C&C+E&KWP">C & C + E & KWP </option>
+                    <option value="B+E">B+E</option>
                   </select>
                 </div>
                 <div>
@@ -1068,12 +1091,14 @@ const removeEditFile = (index) => {
                     <option value="additional">Dodatkowy</option>
                   </select>
                 </div>
-                <div>
+                {
+                   newDriver.course_type === "basic" ? (
+                      <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Rozpoczęcia</label>
                   <select
                     name="start_date"
-                    value={newDriver.start_date}
-                    onChange={handleInputChange}
+                    value={newDriver?.start_date}
+                    onChange={handleEditInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   >
@@ -1085,6 +1110,10 @@ const removeEditFile = (index) => {
                     ))}
                   </select>
                 </div>
+                   ) : ( 
+                      <input type="hidden" name="start_date" value={""} />
+                    )
+                }
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Data Zawarcia Umowy</label>
                   <input
