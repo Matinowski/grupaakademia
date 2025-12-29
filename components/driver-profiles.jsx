@@ -94,7 +94,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
   }, [drivers]) // Uruchom efekty tylko wtedy, gdy lista drivers się zmienia
 
   // Filtruj kierowców na podstawie zapytania wyszukiwania
-  const filteredDrivers = drivers?.filter(
+  const filteredDrivers = drivers.filter(
     (driver) =>
       driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       driver.phone.includes(searchQuery) ||
@@ -1098,7 +1098,7 @@ const removeEditFile = (index) => {
                   <select
                     name="start_date"
                     value={newDriver?.start_date}
-                    onChange={handleEditInputChange}
+                    onChange={handleInputChange}
                     className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     required
                   >
@@ -1111,7 +1111,7 @@ const removeEditFile = (index) => {
                   </select>
                 </div>
                    ) : ( 
-                      <input type="hidden" name="start_date" value={""} />
+                      <input type="hidden" name="start_date" value={null} />
                     )
                 }
                 <div>
