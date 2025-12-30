@@ -36,11 +36,10 @@ function isTooLate(eventDateString, now = new Date()) {
 
 
 
-export async function GET(request, { params }) {
+export async function GET(request, context) {
   try {
-    const eventId = params.id
-
-
+   const params = await context.params
+   const eventId = params.id
     // No authorization check - return event details regardless of user
 
     const { data, error } = await supabaseAdmin
@@ -82,64 +81,38 @@ export async function GET(request, { params }) {
   }
 }
 
-export async function PATCH(request, { params }) {
+export async function PATCH(request, context) {
   try {
-    const eventId = await params.id
+    const params = await context.params
+    const eventId = params.id
+
+    console.log("Updating event with ID:", eventId)
+
     const body = await request.json()
-    console.log(body)
     const eventData = eventUpdateSchema.parse(body)
 
     const now = new Date()
-eventData.updated_at = now.toISOString()
 
-// Użyj daty z eventData jeśli jest nadpisana, albo z aktualnego eventu
-const effectiveEventDate = eventData.date || currentEvent.date
-const is_too_late = isTooLate(effectiveEventDate, now)
-eventData.is_too_late = is_too_late
-
-    console.log("Event data to update:", eventData)
-
-    const { data: currentEvent } = await supabaseAdmin.from("events").select("*").eq("id", eventId).single()
+    const { data: currentEvent } = await supabaseAdmin
+      .from("events")
+      .select("*")
+      .eq("id", eventId)
+      .single()
 
     if (!currentEvent) {
       return NextResponse.json({ error: "Event not found" }, { status: 404 })
     }
 
-    // Check for scheduling conflicts if date, time, or instructor changed
-    if (
-      (eventData.date || eventData.start_time || eventData.end_time || eventData.instructor_id) &&
-      (eventData.instructor_id || currentEvent.instructor_id)
-    ) {
-      const instructor_id = eventData.instructor_id || currentEvent.instructor_id
-      const date = eventData.date || currentEvent.date
-      const start_time = eventData.start_time || currentEvent.start_time
-      const end_time = eventData.end_time || currentEvent.end_time
+    eventData.updated_at = now.toISOString()
+    const effectiveEventDate = eventData.date || currentEvent.date
+    eventData.is_too_late = isTooLate(effectiveEventDate, now)
 
-      
-
-    //   const { data: conflictingEvents } = await supabaseAdmin
-    //     .from("events")
-    //     .select("id, title, start_time, end_time")
-    //     .eq("instructor_id", instructor_id)
-    //     .eq("date", date)
-    //     .neq("id", eventId) // Exclude current event
-    //     .or(`start_time.lte.${end_time},end_time.gte.${start_time}`)
-
-    //   if (conflictingEvents && conflictingEvents.length > 0) {
-    //     return NextResponse.json(
-    //       {
-    //         error: "Scheduling conflict",
-    //         conflicts: conflictingEvents,
-    //       },
-    //       { status: 409 },
-    //     )
-    //   }
-     }
-
- 
-
-    // Update event
-    const { data, error } = await supabaseAdmin.from("events").update(eventData).eq("id", eventId).select().single()
+    const { data, error } = await supabaseAdmin
+      .from("events")
+      .update(eventData)
+      .eq("id", eventId)
+      .select()
+      .single()
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 })
@@ -147,30 +120,30 @@ eventData.is_too_late = is_too_late
 
     return NextResponse.json({ event: data })
   } catch (error) {
-    console.error("Error updating event:", error)
-    if (error instanceof z.ZodError) {
-      console.log("ZodError:", error.errors)  
-      console.error("ZodError:", error.errors)
-      return NextResponse.json({ error: error.errors }, { status: 400 })
-    }
-
+    console.error(error)
     return NextResponse.json({ error: "Failed to update event" }, { status: 500 })
   }
 }
 
-export async function DELETE(request, { params }) {
+
+export async function DELETE(request, context) {
   try {
-    const eventId = params.id
+     const params = await context.params
+  const eventId = params.id
 
 
     // No authorization check - allow anyone to delete events
 
     // Delete event
-    const { error } = await supabaseAdmin.from("events").delete().eq("id", eventId)
+ const { count } = await supabaseAdmin
+  .from("events")
+  .delete({ count: "exact" })
+  .eq("id", eventId)
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 })
-    }
+   
+if (count === 0) {
+  return NextResponse.json({ error: "Event not deleted" }, { status: 400 })
+}
 
     return NextResponse.json({ success: true })
   } catch (error) {
