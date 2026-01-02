@@ -15,6 +15,7 @@ import EventModal from "@/components/calendar/event-modal"
 import Header from "@/components/calendar/header"
 
 // Other components
+import SidebarToggle from "@/components/sidebar-toggle"
 import Sidebar from "@/components/sidebar"
 import DriverProfiles from "@/components/driver-profiles"
 import InstructorProfiles from "@/components/instructor-profiles"
@@ -51,6 +52,8 @@ export default function DrivingSchoolApp() {
   // Filtering state
   const [selectedInstructors, setSelectedInstructors] = useState({})
   const [selectedDrivers, setSelectedDrivers] = useState({})
+
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
   // Fetch all data on component mount
   useEffect(() => {
@@ -906,6 +909,7 @@ export default function DrivingSchoolApp() {
   // Update the Sidebar component in the return statement to pass instructors and drivers
   return (
     <div className="flex h-screen bg-gray-50">
+    <SidebarToggle onClick={() => setIsMobileMenuOpen(true)} />
       <Sidebar
         calendars={calendars}
         instructors={instructors}
@@ -919,6 +923,8 @@ export default function DrivingSchoolApp() {
         onDriverToggle={handleDriverToggle}
         userRole={userRole}
         onRoleChange={setUserRole}
+        isMobileOpen={isMobileMenuOpen}
+        onMobileClose={() => setIsMobileMenuOpen(false)}
       />
       <div className="flex flex-col flex-1 overflow-x-hidden overflow-y-scroll">{renderContent()}</div>
     </div>
