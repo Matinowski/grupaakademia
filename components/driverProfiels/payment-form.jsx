@@ -6,8 +6,9 @@ import { CreditCard, Calendar, DollarSign, FileText, Plus, Trash2, AlertCircle }
 import PaymentSchedule from "./payment-schedule"
 import { useRouter } from "next/navigation"
 
-export default function PaymentForm({ driver_id, driver, userId, onClose }) {
+export default function PaymentForm({ driver, userId, onClose }) {
   const router = useRouter()
+  const { id: driver_id } = driver
   const [varDriver, setVarDriver] = useState(driver)
   const [payments, setPayments] = useState(varDriver.payments || [])
   const [totalPaid, setTotalPaid] = useState(varDriver.total_paid || 0)
@@ -22,6 +23,7 @@ export default function PaymentForm({ driver_id, driver, userId, onClose }) {
     description: "",
     installment_id: null,
   })
+  console.log("driver id", driver_id)
   console.log("driver asd", driver)
   const handleInputChange = (e) => {
     const { name, value } = e.target
