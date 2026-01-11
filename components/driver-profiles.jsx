@@ -25,7 +25,7 @@ import PdfViewer from "@/components/ui/pdf-viewer"
 const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia", "Centrum", "Ozorków"]
 
 export default function DriverProfiles({ drivers, events, dates }) {
-  const [signedUrls, setSignedUrls] = useState({})
+   const [signedUrls, setSignedUrls] = useState({})
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { user } = useAuth()
@@ -42,18 +42,18 @@ export default function DriverProfiles({ drivers, events, dates }) {
     phone: "",
     email: "",
     license_type: "B",
-    course_type: "basic", // basic or additional
-    start_date: dates?.length > 0 ? dates[0].id : "", // Store date ID instead of date string
+    course_type: "basic",
+    start_date: dates?.length > 0 ? dates[0].id : "",
     contract_date: "",
     completed_hours: 0,
     remaining_hours: 30,
     notes: "",
-    payment_type: "onetime", // onetime or installments
+    payment_type: "onetime",
     paymentInstallments: [{ hours: 0, amount: 0 }],
     paymentFiles: [],
     totalPaid: 0,
     price: 0,
-    branch: "Widzew", // Dodaj domyślną wartość
+    branch: "Widzew",
   })
   const [installments, setInstallments] = useState([{ hours: 0, amount: 0 }])
   const [editedDriver, setEditedDriver] = useState(null)
@@ -82,7 +82,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
     }
   }
 
-  // Filtruj kierowców na podstawie zapytania wyszukiwania
   const filteredDrivers = drivers.filter(
     (driver) =>
       driver.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -105,16 +104,14 @@ export default function DriverProfiles({ drivers, events, dates }) {
     const endTotal = endHour * 60 + endMinute
     const durationMinutes = endTotal - startTotal
     const durationHours = durationMinutes / 60
-    return durationHours.toFixed(1) // np. 1.5
+    return durationHours.toFixed(1)
   }
 
-  // Helper function to get date string from date ID
   const getDateStringFromId = (dateId) => {
     const dateObj = dates?.find((d) => d.id === dateId)
     return dateObj ? dateObj.data : dateId
   }
 
-  // Helper function to get date ID from date string (for existing drivers)
   const getDateIdFromString = (dateString) => {
     const dateObj = dates?.find((d) => d.data === dateString)
     return dateObj ? dateObj.id : dateString
@@ -129,23 +126,20 @@ export default function DriverProfiles({ drivers, events, dates }) {
 
   const handleAddDriverSubmit = async (e) => {
     e.preventDefault()
-    // Add installments to the new driver object
     if (newDriver.course_type !== "basic") {
       newDriver.start_date = null
     }
     const driverWithInstallments = {
       ...newDriver,
-      branch: newDriver.branch || "Widzew", // Upewnij się, że branch nie jest pusty
+      branch: newDriver.branch || "Widzew",
       paymentInstallments: newDriver.payment_type === "installments" ? installments : [],
-      price: Number(newDriver.price) || 0, // Ensure price is a number
+      price: Number(newDriver.price) || 0,
     }
 
     startTransition(async () => {
       const result = await addDriver(driverWithInstallments)
       if (result.success) {
-        // Refresh the page to get updated data
         router.refresh()
-        // Reset form
         setNewDriver({
           name: "",
           phone: "",
@@ -174,7 +168,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
 
   const handleEditDriverSubmit = async (e) => {
     e.preventDefault()
-    // Add installments to the edited driver object
     if (editedDriver.course_type !== "basic") {
       editedDriver.start_date = null
     }
@@ -183,15 +176,13 @@ export default function DriverProfiles({ drivers, events, dates }) {
     const updatedDriver = {
       ...editedDriver,
       paymentInstallments: editedDriver.payment_type === "installments" ? editInstallments : [],
-      branch: editedDriver.branch || "Widzew", // Upewnij się, że branch nie jest pusty
+      branch: editedDriver.branch || "Widzew",
     }
 
     startTransition(async () => {
       const result = await updateDriver(updatedDriver)
       if (result.success) {
-        // Refresh the page to get updated data
         router.refresh()
-        // Update local state
         setSelectedDriver(updatedDriver)
         setEditMode(false)
       } else {
@@ -206,9 +197,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
     startTransition(async () => {
       const result = await deleteDriver(selectedDriver.id)
       if (result.success) {
-        // Refresh the page to get updated data
         router.refresh()
-        // Reset selected driver
         setSelectedDriver(null)
         setConfirmDelete(false)
       } else {
@@ -289,7 +278,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
       ...prev,
       newPaymentFiles: [...(prev.newPaymentFiles || []), ...files],
     }))
-    e.target.value = "" // reset inputu
+    e.target.value = ""
   }
 
   const removeFile = (index) => {
@@ -304,37 +293,33 @@ export default function DriverProfiles({ drivers, events, dates }) {
   const removeEditFile = (index) => {
     const isExistingFile = index < editedDriver.paymentFiles?.length - (editedDriver.newPaymentFiles?.length || 0)
 
-    // Nowa lista plików do usunięcia
     const filesToDelete = [...(editedDriver.filesToDelete || [])]
     if (isExistingFile) {
       filesToDelete.push(editedDriver.paymentFiles[index])
     }
 
-    // Aktualizacja paymentFiles
     const updatedFiles = [...(editedDriver.paymentFiles || [])]
     updatedFiles.splice(index, 1)
 
-    // Aktualizacja newPaymentFiles
     const updatedNewFiles = [...(editedDriver.newPaymentFiles || [])]
     if (!isExistingFile) {
       const newFileIndex = index - (editedDriver.paymentFiles?.length - updatedNewFiles.length)
       if (newFileIndex >= 0) updatedNewFiles.splice(newFileIndex, 1)
     }
 
-    // Jedno setState z wszystkimi zmianami
     setEditedDriver({
       ...editedDriver,
       paymentFiles: updatedFiles,
       newPaymentFiles: updatedNewFiles,
-      filesToDelete, // <-- teraz pole będzie istniało
+      filesToDelete,
     })
   }
 
   const startEditMode = () => {
     setEditedDriver({
       ...selectedDriver,
-      branch: selectedDriver.branch || "Widzew", // Upewnij się, że branch ma wartość
-      start_date: getDateIdFromString(selectedDriver.start_date), // Convert date string to ID for editing
+      branch: selectedDriver.branch || "Widzew",
+      start_date: getDateIdFromString(selectedDriver.start_date),
     })
     setEditInstallments(
       selectedDriver.paymentInstallments?.length > 0
@@ -349,12 +334,15 @@ export default function DriverProfiles({ drivers, events, dates }) {
     setEditMode(false)
   }
 
-  // Check if a driver has missed a payment threshold
   const hasMissedPayment = (driver) => {
     if (!driver.paymentInstallments || driver.paymentInstallments.length === 0) return false
 
+    let cumulativeThreshold = 0
+
     for (const installment of driver.paymentInstallments) {
-      if (driver.completed_hours >= installment.hours && driver.totalPaid < installment.amount) {
+      cumulativeThreshold += installment.amount
+
+      if (driver.completed_hours >= installment.hours && driver.totalPaid < cumulativeThreshold) {
         return true
       }
     }
@@ -369,12 +357,9 @@ export default function DriverProfiles({ drivers, events, dates }) {
     setPdfPreview(null)
   }
 
-  // Sprawdź, czy plik jest PDF-em
-
   const isPdfFile = (file) => {
     return file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
   }
-
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-y-scroll">
       {/* Lista kierowców */}

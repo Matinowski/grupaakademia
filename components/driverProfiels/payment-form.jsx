@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { addPayment, deletePayment } from "@/app/actions/payment-actions"
-import { CreditCard, Calendar, DollarSign, FileText, Plus, Trash2, AlertCircle } from "lucide-react"
+import { CreditCard, Calendar, DollarSign, Plus, Trash2, AlertCircle } from "lucide-react"
 import PaymentSchedule from "./payment-schedule"
 import { useRouter } from "next/navigation"
 
@@ -11,7 +11,12 @@ export default function PaymentForm({ driver, userId, onClose }) {
   const { id: driver_id } = driver
   const [varDriver, setVarDriver] = useState(driver)
   const [payments, setPayments] = useState(varDriver.payments || [])
-  const [totalPaid, setTotalPaid] = useState(varDriver.total_paid || 0)
+  const calculateTotalPaid = (paymentsArray) => {
+    if (!paymentsArray || paymentsArray.length === 0) return 0
+    return paymentsArray.reduce((sum, payment) => sum + Number.parseFloat(payment.amount), 0)
+  }
+  const [totalPaid, setTotalPaid] = useState(calculateTotalPaid(varDriver.payments))
+  // </CHANGE>
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showForm, setShowForm] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(null)
@@ -34,10 +39,11 @@ export default function PaymentForm({ driver, userId, onClose }) {
   }
 
   useEffect(() => {
-    setVarDriver(driver);
-    setPayments(driver.payments || []);
-    setTotalPaid(driver.total_paid || 0);
-  }, [driver]);
+    setVarDriver(driver)
+    setPayments(driver.payments || [])
+    setTotalPaid(calculateTotalPaid(driver.payments))
+    // </CHANGE>
+  }, [driver])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -51,8 +57,17 @@ export default function PaymentForm({ driver, userId, onClose }) {
       })
 
       if (result.success) {
-        setPayments([result.payment, ...payments])
-        setTotalPaid((prev) => prev + parseFloat(result.payment.amount))
+        const updatedPayments = [result.payment, ...payments]
+        setPayments(updatedPayments)
+        setTotalPaid(calculateTotalPaid(updatedPayments))
+        // </CHANGE>
+
+        setVarDriver({
+          ...varDriver,
+          payments: updatedPayments,
+          total_paid: calculateTotalPaid(updatedPayments),
+        })
+        // </CHANGE>
 
         setNewPayment({
           amount: "",
@@ -81,9 +96,17 @@ export default function PaymentForm({ driver, userId, onClose }) {
       const result = await deletePayment(paymentId)
 
       if (result.success) {
-        const deletedPayment = payments.find((p) => p.id === paymentId)
-        setPayments(payments.filter((p) => p.id !== paymentId))
-        setTotalPaid((prev) => Math.max(0, prev - parseFloat(deletedPayment.amount)))
+        const updatedPayments = payments.filter((p) => p.id !== paymentId)
+        setPayments(updatedPayments)
+        setTotalPaid(calculateTotalPaid(updatedPayments))
+        // </CHANGE>
+
+        setVarDriver({
+          ...varDriver,
+          payments: updatedPayments,
+          total_paid: calculateTotalPaid(updatedPayments),
+        })
+        // </CHANGE>
         setConfirmDelete(null)
       } else {
         alert(`Błąd podczas usuwania płatności: ${result.error}`)
@@ -139,8 +162,7 @@ export default function PaymentForm({ driver, userId, onClose }) {
         </div>
 
         <p className="text-sm text-gray-600">
-          Łącznie zapłacone: <span className="font-semibold">{varDriver.total_paid
-          } PLN</span>
+          Łącznie zapłacone: <span className="font-semibold">{totalPaid} PLN</span>
         </p>
 
         {showForm && (
@@ -209,7 +231,6 @@ export default function PaymentForm({ driver, userId, onClose }) {
                     </select>
                   </div>
                 </div>
-
               </div>
 
               <div>
@@ -252,19 +273,31 @@ export default function PaymentForm({ driver, userId, onClose }) {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Kwota</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Metoda</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Opis</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Akcje</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Data
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Kwota
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Metoda
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Opis
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Akcje
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {payments.map((payment) => (
                   <tr key={payment.id}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(payment.payment_date)}</td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(payment.payment_date)}
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                      {parseFloat(payment.amount).toFixed(2)} PLN
+                      {Number.parseFloat(payment.amount).toFixed(2)} PLN
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {payment.payment_method === "cash" && "Gotówka"}

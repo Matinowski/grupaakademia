@@ -1,19 +1,24 @@
 "use client"
-
-import { useState, useEffect } from "react"
 import { AlertCircle, CheckCircle, Clock, DollarSign } from "lucide-react"
 
 export default function PaymentSchedule({ driver, onPaymentClick }) {
-
   if (driver.paymentInstallments.length === 0) {
     return null
   }
 
+  const calculateTotalPaid = () => {
+    if (!driver.payments || driver.payments.length === 0) {
+      return 0
+    }
+    return driver.payments.reduce((sum, payment) => sum + Number.parseFloat(payment.amount), 0)
+  }
+
+  const totalPaid = calculateTotalPaid()
+  // </CHANGE>
+
   // Funkcja pomocnicza do obliczania wymaganej sumy do danej raty
   const calculateExpectedPayment = (installments, index) => {
-    return installments
-      .slice(0, index + 1)
-      .reduce((sum, i) => sum + i.amount, 0)
+    return installments.slice(0, index + 1).reduce((sum, i) => sum + i.amount, 0)
   }
 
   return (
@@ -44,7 +49,7 @@ export default function PaymentSchedule({ driver, onPaymentClick }) {
               {driver.paymentInstallments.map((installment, index) => {
                 const requiredPayment = calculateExpectedPayment(driver.paymentInstallments, index)
                 const isDue = driver.completed_hours >= installment.hours
-                const isPaid = driver.total_paid >= requiredPayment
+                const isPaid = totalPaid >= requiredPayment
 
                 let status
                 if (!isDue) {
@@ -102,7 +107,7 @@ export default function PaymentSchedule({ driver, onPaymentClick }) {
           </div>
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
             <p className="text-xs text-gray-500 mb-1">Suma wpłat</p>
-            <p className="text-lg font-medium">{driver.total_paid} PLN</p>
+            <p className="text-lg font-medium">{totalPaid} PLN</p>
           </div>
         </div>
       </div>
