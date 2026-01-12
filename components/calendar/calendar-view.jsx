@@ -120,7 +120,7 @@ export default function Calendar({
     const info = {
       time: event.start_time,
       studentName: event.driver?.name || "Brak danych",
-      category: event.driver?.license_category || "B",
+      category: event.driver?.license_type || "B",
       phone: event.driver?.phone || "Brak tel.",
       instructor: event.instructor?.name || "Brak instruktora",
     }

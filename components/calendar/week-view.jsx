@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react"
 import { motion } from "framer-motion"
-import { Clock, User, Car, Phone } from "lucide-react"
+import { User, Car, Phone } from "lucide-react"
 
 export default function WeekView({
   currentDate,
@@ -23,15 +23,15 @@ export default function WeekView({
     return classes.filter(Boolean).join(" ")
   }
 
- // Get start of week (Monday)
-const getStartOfWeek = (date) => {
-  const startOfWeek = new Date(date)
-  const day = date.getDay()
-  const diff = (day === 0 ? -6 : 1 - day) // if Sunday (0), go back 6 days; else back to Monday
-  startOfWeek.setDate(date.getDate() + diff)
-  startOfWeek.setHours(0, 0, 0, 0)
-  return startOfWeek
-}
+  // Get start of week (Monday)
+  const getStartOfWeek = (date) => {
+    const startOfWeek = new Date(date)
+    const day = date.getDay()
+    const diff = day === 0 ? -6 : 1 - day // if Sunday (0), go back 6 days; else back to Monday
+    startOfWeek.setDate(date.getDate() + diff)
+    startOfWeek.setHours(0, 0, 0, 0)
+    return startOfWeek
+  }
 
   // Get days of the week
   const getDaysOfWeek = (startDate) => {
@@ -223,10 +223,10 @@ const getStartOfWeek = (date) => {
     }
   }
 
-   const getEventTypeColor = (event) => {
+  const getEventTypeColor = (event) => {
     const createdAt = new Date(event.created_at)
     const hour = createdAt.getHours()
-    
+
     if (event.is_too_late) {
       return "#FBBF24" // amber
     } else if (event.payment_due) {
@@ -241,7 +241,7 @@ const getStartOfWeek = (date) => {
     const info = {
       time: event.start_time,
       studentName: event.driver?.name || "Brak danych",
-      category: event.driver?.license_category || "B",
+      category: event.driver?.license_type || "B",
       phone: event.driver?.phone || "Brak tel.",
       instructor: event.instructor?.name || "Brak instruktora",
     }
@@ -342,7 +342,7 @@ const getStartOfWeek = (date) => {
             }}
           >
             {/* Header with days */}
-            <div className="flex border-b sticky top-0 bg-white z-10">
+            <div className="flex border-b sticky top-0 bg-white z-0">
               <div className="w-16 flex-shrink-0 border-r bg-gray-50"></div>
               {daysOfWeek.map((day, index) => {
                 const dayLayout = dayLayouts[day.toISOString()]
@@ -413,13 +413,15 @@ const getStartOfWeek = (date) => {
                         if (!layout) return null
 
                         const eventInfo = getEventDisplayInfo(event)
+                        const eventHeight = Number.parseInt(getEventStyle(event, layout).height.replace("px", ""))
+                        const isShortEvent = eventHeight < 60
 
                         return (
                           <motion.div
                             key={event.id}
                             className={classNames(
                               "absolute rounded px-2 py-1 text-white text-xs pointer-events-auto cursor-move",
-                              "shadow-md border border-white/30 transition-all duration-200",
+                              "shadow-md border border-white/30 transition-all duration-200 overflow-hidden",
                               hoveredEvent === event.id ? "ring-2 ring-white/70 shadow-lg" : "",
                             )}
                             style={{
@@ -443,33 +445,28 @@ const getStartOfWeek = (date) => {
                             }}
                             transition={{ duration: 0.2 }}
                           >
-                            <div className="space-y-1">
-                              <div className="font-medium leading-tight">{event.title}</div>
+                            <div className="space-y-0.5 overflow-hidden h-full">
+                              {/* Title - always visible, truncated */}
+                              <div className="font-medium leading-tight truncate">{event.title}</div>
 
-                              {/* Always show time */}
-                              <div className="flex items-center text-xs opacity-90">
-                                <User className="w-3 h-3 mr-0.5 flex-shrink-0" />
-                                <span>{eventInfo.studentName}</span>
+                              {/* Student name - always visible, truncated */}
+                              <div className="flex items-center text-xs opacity-90 min-w-0">
+                                <User className="w-3 h-3 mr-1 flex-shrink-0" />
+                                <span className="truncate">{eventInfo.studentName}</span>
                               </div>
 
-                              
-
-                              {/* Show additional info on hover or if event is tall enough */}
-                              {(hoveredEvent === event.id ||
-                                getEventStyle(event, layout).height.replace("px", "") > 60) && (
-                                <>
-                                  
-                                  <div className="flex items-center justify-between text-xs opacity-90">
-                                    <div className="flex items-center">
-                                      <Car className="w-3 h-3 mr-1 flex-shrink-0" />
-                                      <span>{eventInfo.category}</span>
-                                    </div>
-                                    <div className="flex items-center">
-                                      <Phone className="w-3 h-3 mr-1 flex-shrink-0" />
-                                      <span className="text-xs">{eventInfo.phone}</span>
-                                    </div>
+                              {/* Additional info - only show if not a short event or if hovered */}
+                              {(!isShortEvent || hoveredEvent === event.id) && (
+                                <div className=" items-center flex-row justify-between text-xs opacity-90 gap-1">
+                                  <div className="flex items-center min-w-0 flex-shrink">
+                                    <Car className="w-3 h-3 mr-1 flex-shrink-0" />
+                                    <span className="truncate">{eventInfo.category}</span>
                                   </div>
-                                </>
+                                  <div className="flex items-center flex-shrink-0">
+                                    <Phone className="w-3 h-3 mr-1 flex-shrink-0" />
+                                    <span className="text-[10px] truncate">{eventInfo.phone}</span>
+                                  </div>
+                                </div>
                               )}
                             </div>
                           </motion.div>

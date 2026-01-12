@@ -25,7 +25,7 @@ import PdfViewer from "@/components/ui/pdf-viewer"
 const branches = ["Widzew", "Bałuty", "Zgierz", "Górna", "Dąbrowa", "Retkinia", "Centrum", "Ozorków"]
 
 export default function DriverProfiles({ drivers, events, dates }) {
-   const [signedUrls, setSignedUrls] = useState({})
+  const [signedUrls, setSignedUrls] = useState({})
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
   const { user } = useAuth()
@@ -630,27 +630,30 @@ export default function DriverProfiles({ drivers, events, dates }) {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {events
-                        .filter((event) => event.student_phone === selectedDriver.phone)
-                        .map((event) => (
-                          <tr key={event.id}>
-                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
-                              {formatDate(event.date)}
-                            </td>
-                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
-                              {event.start_time} - {event.end_time}
-                            </td>
-                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm hidden sm:table-cell">
-                              {event.instructor}
-                            </td>
-                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm">
-                              {calculateDuration(event.start_time, event.end_time)}h
-                            </td>
-                          </tr>
-                        ))}
-                      {events.filter((event) => event.student_phone === selectedDriver.phone).length === 0 && (
+                      {console.log(events)}
+                      {selectedDriver.events.map((event) => (
+                        <tr key={event.id}>
+                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
+                            {formatDate(event.date)}
+                          </td>
+                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
+                            {event.start_time} - {event.end_time}
+                          </td>
+                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm hidden sm:table-cell">
+                            {typeof event.instructor === "object" && event.instructor !== null
+                              ? `${event.instructor.name || ""} ${event.instructor.surname || ""}`.trim() ||
+                                event.instructor.email ||
+                                "-"
+                              : event.instructor || "-"}
+                          </td>
+                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm">
+                            {calculateDuration(event.start_time, event.end_time)}h
+                          </td>
+                        </tr>
+                      ))}
+                      {selectedDriver.events && selectedDriver.events.length === 0 && (
                         <tr>
-                          <td colSpan="4" className="px-4 py-8 text-center text-sm text-gray-500">
+                          <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
                             Brak historii jazd dla tego kierowcy.
                           </td>
                         </tr>

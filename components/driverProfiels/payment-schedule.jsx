@@ -10,7 +10,13 @@ export default function PaymentSchedule({ driver, onPaymentClick }) {
     if (!driver.payments || driver.payments.length === 0) {
       return 0
     }
-    return driver.payments.reduce((sum, payment) => sum + Number.parseFloat(payment.amount), 0)
+return (
+  driver.payments.reduce(
+    (sum, payment) => sum + Math.round(Number(payment.amount) * 100),
+    0
+  ) / 100
+).toFixed(2);
+
   }
 
   const totalPaid = calculateTotalPaid()

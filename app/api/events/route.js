@@ -31,61 +31,61 @@ function isTooLate(eventDateString, now = new Date()) {
 // Add a query parameter handler for date range filtering
 export async function GET(request) {
   const cookieStore = await cookies()
-    const sessionToken = cookieStore.get("session-token")
-      if (!sessionToken) {
-        return NextResponse.json({ user: null }, { status: 401 })
-      }
-    
-      const { data: session, error: sessionError } = await supabaseAdmin
-        .from("sessions")
-        .select("user_id, expires_at")
-        .eq("session_token", sessionToken.value)
-        .single()
-    
-      if (sessionError || !session || new Date(session.expires_at) < new Date()) {
-        return NextResponse.json({ user: null }, { status: 401 })
-      }
-    
-      const { data: user, error: userError } = await supabaseAdmin
-        .from("users")
-        .select("role")
-        .eq("id", session.user_id)
-        .single()
-    
-      if (userError || !user) {
-        return NextResponse.json({ user: null, test:"asd" }, { status: 401 })
-      }
+  const sessionToken = cookieStore.get("session-token")
 
+  if (!sessionToken) {
+    return NextResponse.json({ user: null }, { status: 401 })
+  }
+
+  const { data: session, error: sessionError } = await supabaseAdmin
+    .from("sessions")
+    .select("user_id, expires_at")
+    .eq("session_token", sessionToken.value)
+    .single()
+
+  if (sessionError || !session || new Date(session.expires_at) < new Date()) {
+    return NextResponse.json({ user: null }, { status: 401 })
+  }
+
+  const { data: user, error: userError } = await supabaseAdmin
+    .from("users")
+    .select("role")
+    .eq("id", session.user_id)
+    .single()
+
+  if (userError || !user) {
+    return NextResponse.json({ user: null }, { status: 401 })
+  }
 
   try {
     let query = supabaseAdmin.from("events").select(`
-  *,
-  driver:drivers (
-    id,
-    name,
-    email,
-    phone,
-    completed_hours,
-    total_paid
-  ),
-  instructor:users (
-    id,
-    name,
-    surname,
-    email,
-    phone
-  ),
-  calendar:calendars (
-    id,
-    name,
-    color
-  )
-`)
+      *,
+      driver:drivers (
+        id,
+        name,
+        email,
+        phone,
+        completed_hours,
+        license_type
+      ),
+      instructor:users (
+        id,
+        name,
+        surname,
+        email,
+        phone
+      ),
+      calendar:calendars (
+        id,
+        name,
+        color
+      )
+    `)
 
-// Jeśli użytkownik jest instruktorem, ogranicz zapytanie do jego eventów
-if (user.role === "instruktor") {
-  query = query.eq("instructor_id", session.user_id)
-}
+    // Instruktor widzi tylko swoje eventy
+    if (user.role === "instruktor") {
+      query = query.eq("instructor_id", session.user_id)
+    }
 
     const url = new URL(request.url)
     const startDate = url.searchParams.get("start_date")
@@ -110,10 +110,12 @@ if (user.role === "instruktor") {
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // Unikalne ID kierowców
-    const driverIds = [...new Set(events.map((e) => e.driver?.id).filter(Boolean))]
+    // ===== DRIVER IDS =====
+    const driverIds = [
+      ...new Set(events.map(e => e.driver?.id).filter(Boolean))
+    ]
 
-    // Pobierz raty płatności dla kierowców
+    // ===== PAYMENT INSTALLMENTS =====
     const { data: installments, error: installmentError } = await supabaseAdmin
       .from("payment_installments")
       .select("driver_id, hours, amount")
@@ -124,42 +126,63 @@ if (user.role === "instruktor") {
       return NextResponse.json({ error: "Failed to fetch installments" }, { status: 500 })
     }
 
-    // Mapowanie rat na kierowców
     const installmentsMap = installments.reduce((acc, inst) => {
       if (!acc[inst.driver_id]) acc[inst.driver_id] = []
       acc[inst.driver_id].push(inst)
       return acc
     }, {})
 
-    // Oblicz payment_due
-    const enrichedEvents = events.map((event) => {
+    // ===== PAYMENTS =====
+    const { data: payments, error: paymentsError } = await supabaseAdmin
+      .from("payments")
+      .select("driver_id, amount")
+      .in("driver_id", driverIds)
+
+    if (paymentsError) {
+      console.error("Error fetching payments:", paymentsError)
+      return NextResponse.json({ error: "Failed to fetch payments" }, { status: 500 })
+    }
+
+    const paymentsMap = payments.reduce((acc, payment) => {
+      if (!acc[payment.driver_id]) acc[payment.driver_id] = 0
+      acc[payment.driver_id] += payment.amount
+      return acc
+    }, {})
+
+    // ===== ENRICH EVENTS =====
+    const enrichedEvents = events.map(event => {
       const driver = event.driver
-      if (!driver || !driver.id) return { ...event, payment_due: false }
 
-      const { completed_hours = 0, total_paid = 0 } = driver
+      if (!driver || !driver.id) {
+        return { ...event, payment_due: false }
+      }
+
+      const { completed_hours = 0 } = driver
       const driverInstallments = installmentsMap[driver.id] || []
+      const totalPaid = paymentsMap[driver.id] || 0
 
-      // Sumujemy kwoty za raty, których próg godzinowy został przekroczony
       const requiredPayment = driverInstallments
         .filter(inst => completed_hours >= inst.hours)
         .reduce((sum, inst) => sum + inst.amount, 0)
 
-      const paymentDue = total_paid < requiredPayment
+      const paymentDue = totalPaid < requiredPayment
 
       return {
         ...event,
         payment_due: paymentDue,
-        required_payment: requiredPayment, // opcjonalnie: ile powinien był zapłacić
-        paid: total_paid // opcjonalnie: ile faktycznie zapłacone
+        required_payment: requiredPayment,
+        paid: totalPaid
       }
     })
 
     return NextResponse.json({ events: enrichedEvents })
+
   } catch (error) {
     console.error("Error in GET events:", error)
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })
   }
 }
+
 
 
 
