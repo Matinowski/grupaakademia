@@ -68,6 +68,44 @@ export default function DriverProfiles({ drivers, events, dates }) {
     }
   }, [showAddDriverForm, selectedDriver])
 
+  // --- NOWA FUNKCJA DO OBLICZANIA POSTĘPU NA PODSTAWIE EVENTÓW ---
+  const calculateProgress = (driver) => {
+    if (!driver || !driver.events) return { completed: 0, remaining: driver.remaining_hours || 0 }
+
+    const now = new Date()
+    let calculatedCompleted = 0
+
+    driver.events.forEach((event) => {
+      // Pobieramy datę i godziny
+      const eventDate = new Date(event.date)
+      const [startHour, startMinute] = event.start_time.split(":").map(Number)
+      const [endHour, endMinute] = event.end_time.split(":").map(Number)
+
+      // Ustawiamy datę zakończenia jazdy
+      const eventEndTime = new Date(eventDate)
+      eventEndTime.setHours(endHour, endMinute, 0, 0)
+
+      // Jeśli data zakończenia jest w przeszłości, dodajemy godziny
+      if (eventEndTime < now) {
+        const durationMinutes = endHour * 60 + endMinute - (startHour * 60 + startMinute)
+        calculatedCompleted += durationMinutes / 60
+      }
+    })
+
+    // Obliczamy pozostałe: (Suma z bazy ukończone + Suma z bazy pozostałe) - Rzeczywiście ukończone
+    // Zakładamy, że suma pól w bazie to całkowity rozmiar pakietu
+    const totalPackage = (driver.completed_hours || 0) + (driver.remaining_hours || 0)
+    let calculatedRemaining = totalPackage - calculatedCompleted
+
+    if (calculatedRemaining < 0) calculatedRemaining = 0
+
+    return {
+      completed: parseFloat(calculatedCompleted.toFixed(1)),
+      remaining: parseFloat(driver.remaining_hours),
+    }
+  }
+  // ---------------------------------------------------------------
+
   const fetchSignedUrl = async (filePath) => {
     try {
       const res = await fetch(
@@ -334,20 +372,26 @@ export default function DriverProfiles({ drivers, events, dates }) {
     setEditMode(false)
   }
 
+  // --- ZMIANA: używamy calculateProgress w walidacji płatności ---
   const hasMissedPayment = (driver) => {
     if (!driver.paymentInstallments || driver.paymentInstallments.length === 0) return false
+
+    // Obliczamy faktyczny postęp
+    const progress = calculateProgress(driver)
+    const currentCompleted = progress.completed
 
     let cumulativeThreshold = 0
 
     for (const installment of driver.paymentInstallments) {
       cumulativeThreshold += installment.amount
 
-      if (driver.completed_hours >= installment.hours && driver.totalPaid < cumulativeThreshold) {
+      if (currentCompleted >= installment.hours && driver.totalPaid < cumulativeThreshold) {
         return true
       }
     }
     return false
   }
+  // -------------------------------------------------------------
 
   const handlePreviewFile = (file) => {
     setPdfPreview(file)
@@ -389,33 +433,39 @@ export default function DriverProfiles({ drivers, events, dates }) {
         </div>
 
         <div className="divide-y">
-          {filteredDrivers.map((driver) => (
-            <div
-              key={driver.id}
-              className={`p-3 lg:p-4 cursor-pointer hover:bg-gray-50 ${selectedDriver?.id === driver.id ? "bg-blue-50" : ""}`}
-              onClick={() => handleDriverSelect(driver)}
-            >
-              <div className="font-medium text-sm lg:text-base">{driver.name}</div>
-              <div className="text-xs lg:text-sm text-gray-500">{driver.phone}</div>
-              <div className="text-xs lg:text-sm text-gray-500 truncate">{driver.email}</div>
-              <div className="mt-1 flex items-center gap-2 flex-wrap">
-                <span
-                  className={`text-xs px-2 py-1 rounded-full ${
-                    driver.remaining_hours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
-                  }`}
-                >
-                  {driver.remaining_hours === 0 ? "Ukończono" : `${driver.remaining_hours}h`}
-                </span>
-                {hasMissedPayment(driver) && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 flex items-center">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    <span className="hidden sm:inline">Zaległa płatność</span>
-                    <span className="sm:hidden">Zaległa</span>
+          {filteredDrivers.map((driver) => {
+            // ZMIANA: Obliczamy statystyki dla każdego kierowcy na liście
+            const listStats = calculateProgress(driver)
+
+            return (
+              <div
+                key={driver.id}
+                className={`p-3 lg:p-4 cursor-pointer hover:bg-gray-50 ${selectedDriver?.id === driver.id ? "bg-blue-50" : ""}`}
+                onClick={() => handleDriverSelect(driver)}
+              >
+                <div className="font-medium text-sm lg:text-base">{driver.name}</div>
+                <div className="text-xs lg:text-sm text-gray-500">{driver.phone}</div>
+                <div className="text-xs lg:text-sm text-gray-500 truncate">{driver.email}</div>
+                <div className="mt-1 flex items-center gap-2 flex-wrap">
+                  <span
+                    className={`text-xs px-2 py-1 rounded-full ${
+                      listStats.remaining === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                    }`}
+                  >
+                    {/* ZMIANA: Wyświetlamy obliczone remaining */}
+                    {listStats.remaining === 0 ? "Ukończono" : `${listStats.remaining}h`}
                   </span>
-                )}
+                  {hasMissedPayment(driver) && (
+                    <span className="text-xs px-2 py-1 rounded-full bg-red-100 text-red-800 flex items-center">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      <span className="hidden sm:inline">Zaległa płatność</span>
+                      <span className="sm:hidden">Zaległa</span>
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
           {filteredDrivers.length === 0 && (
             <div className="p-8 text-center text-sm text-gray-500">
               Nie znaleziono kierowców pasujących do "{searchQuery}"
@@ -431,130 +481,143 @@ export default function DriverProfiles({ drivers, events, dates }) {
       >
         {selectedDriver && !editMode && !showAddDriverForm ? (
           <div className="p-4 lg:p-6">
-            <button
-              onClick={() => setSelectedDriver(null)}
-              className="lg:hidden mb-4 flex items-center text-blue-600 hover:text-blue-700"
-            >
-              <span className="mr-1">←</span> Powrót do listy
-            </button>
+            {/* ZMIANA: Obliczamy statystyki dla wybranego kierowcy */}
+            {(() => {
+              const driverStats = calculateProgress(selectedDriver)
+              return (
+                <>
+                  <button
+                    onClick={() => setSelectedDriver(null)}
+                    className="lg:hidden mb-4 flex items-center text-blue-600 hover:text-blue-700"
+                  >
+                    <span className="mr-1">←</span> Powrót do listy
+                  </button>
 
-            <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
-              <div className="flex-1">
-                <h2 className="text-xl lg:text-2xl font-bold text-gray-800">{selectedDriver.name}</h2>
-                <p className="text-sm text-gray-500">Typ Prawa Jazdy: {selectedDriver.license_type}</p>
-                <p className="text-sm text-gray-500">
-                  Typ Kursu: {selectedDriver.course_type === "basic" ? "Podstawowy" : "Dodatkowy"}
-                </p>
-                <p className="text-sm text-gray-500">Placówka: {selectedDriver.branch || "Brak"}</p>
-              </div>
-              <div className="flex flex-col gap-2 w-full sm:w-auto">
-                <div className="flex gap-2">
-                  <button
-                    onClick={startEditMode}
-                    className="flex-1 sm:flex-initial flex items-center justify-center px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
-                    disabled={isPending}
-                  >
-                    <Edit className="w-4 h-4 mr-1" />
-                    <span className="hidden sm:inline">Edytuj Profil</span>
-                    <span className="sm:hidden">Edytuj</span>
-                  </button>
-                  <button
-                    onClick={() => setConfirmDelete(true)}
-                    className="flex-1 sm:flex-initial flex items-center justify-center px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                    disabled={isPending}
-                  >
-                    <Trash2 className="w-4 h-4 mr-1" />
-                    <span className="sm:hidden">Usuń</span>
-                  </button>
-                </div>
-                <div
-                  className={`px-3 py-1 rounded-full text-xs lg:text-sm font-medium text-center ${
-                    selectedDriver.remaining_hours === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
-                  }`}
-                >
-                  {selectedDriver.remaining_hours === 0 ? "Ukończone" : "W Trakcie"}
-                </div>
-                {hasMissedPayment(selectedDriver) && (
-                  <div className="px-3 py-1 rounded-full text-xs lg:text-sm font-medium bg-red-100 text-red-800 flex items-center justify-center">
-                    <AlertTriangle className="w-4 h-4 mr-1" />
-                    Zaległa płatność
+                  <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
+                    <div className="flex-1">
+                      <h2 className="text-xl lg:text-2xl font-bold text-gray-800">{selectedDriver.name}</h2>
+                      <p className="text-sm text-gray-500">Typ Prawa Jazdy: {selectedDriver.license_type}</p>
+                      <p className="text-sm text-gray-500">
+                        Typ Kursu: {selectedDriver.course_type === "basic" ? "Podstawowy" : "Dodatkowy"}
+                      </p>
+                      <p className="text-sm text-gray-500">Placówka: {selectedDriver.branch || "Brak"}</p>
+                    </div>
+                    <div className="flex flex-col gap-2 w-full sm:w-auto">
+                      <div className="flex gap-2">
+                        <button
+                          onClick={startEditMode}
+                          className="flex-1 sm:flex-initial flex items-center justify-center px-3 py-1 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700"
+                          disabled={isPending}
+                        >
+                          <Edit className="w-4 h-4 mr-1" />
+                          <span className="hidden sm:inline">Edytuj Profil</span>
+                          <span className="sm:hidden">Edytuj</span>
+                        </button>
+                        <button
+                          onClick={() => setConfirmDelete(true)}
+                          className="flex-1 sm:flex-initial flex items-center justify-center px-3 py-1 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                          disabled={isPending}
+                        >
+                          <Trash2 className="w-4 h-4 mr-1" />
+                          <span className="sm:hidden">Usuń</span>
+                        </button>
+                      </div>
+                      <div
+                        className={`px-3 py-1 rounded-full text-xs lg:text-sm font-medium text-center ${
+                          driverStats.remaining === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
+                        }`}
+                      >
+                        {/* ZMIANA: Używamy driverStats.remaining */}
+                        {driverStats.remaining === 0 ? "Ukończone" : "W Trakcie"}
+                      </div>
+                      {hasMissedPayment(selectedDriver) && (
+                        <div className="px-3 py-1 rounded-full text-xs lg:text-sm font-medium bg-red-100 text-red-800 flex items-center justify-center">
+                          <AlertTriangle className="w-4 h-4 mr-1" />
+                          Zaległa płatność
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
-              </div>
-            </div>
 
-            {confirmDelete && (
-              <div className="mb-6 p-4 border border-red-300 bg-red-50 rounded-md">
-                <h3 className="text-lg font-medium text-red-800 mb-2">Potwierdź usunięcie</h3>
-                <p className="text-red-700 mb-4">
-                  Czy na pewno chcesz usunąć tego kierowcę? Ta operacja jest nieodwracalna.
-                </p>
-                <div className="flex justify-end gap-2">
-                  <button
-                    onClick={() => setConfirmDelete(false)}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
-                  >
-                    Anuluj
-                  </button>
-                  <button
-                    onClick={handleDeleteDriver}
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
-                    disabled={isPending}
-                  >
-                    {isPending ? "Usuwanie..." : "Tak, usuń"}
-                  </button>
-                </div>
-              </div>
-            )}
+                  {confirmDelete && (
+                    <div className="mb-6 p-4 border border-red-300 bg-red-50 rounded-md">
+                      <h3 className="text-lg font-medium text-red-800 mb-2">Potwierdź usunięcie</h3>
+                      <p className="text-red-700 mb-4">
+                        Czy na pewno chcesz usunąć tego kierowcę? Ta operacja jest nieodwracalna.
+                      </p>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50"
+                        >
+                          Anuluj
+                        </button>
+                        <button
+                          onClick={handleDeleteDriver}
+                          className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700"
+                          disabled={isPending}
+                        >
+                          {isPending ? "Usuwanie..." : "Tak, usuń"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-6">
-              <div className="flex items-center">
-                <Phone className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs lg:text-sm text-gray-500">Telefon</div>
-                  <div className="text-sm lg:text-base">{selectedDriver.phone}</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <User className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
-                <div className="min-w-0">
-                  <div className="text-xs lg:text-sm text-gray-500">Email</div>
-                  <div className="text-sm lg:text-base truncate">{selectedDriver.email}</div>
-                </div>
-              </div>
-              {selectedDriver.course_type === "basic" ? (
-                <div className="flex items-center">
-                  <Calendar className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
-                  <div>
-                    <>
-                      <div className="text-xs lg:text-sm text-gray-500">Data Rozpoczęcia</div>
-                      <div className="text-sm lg:text-base">{getDateStringFromId(selectedDriver.start_date)}</div>
-                    </>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-6">
+                    <div className="flex items-center">
+                      <Phone className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs lg:text-sm text-gray-500">Telefon</div>
+                        <div className="text-sm lg:text-base">{selectedDriver.phone}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <User className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
+                      <div className="min-w-0">
+                        <div className="text-xs lg:text-sm text-gray-500">Email</div>
+                        <div className="text-sm lg:text-base truncate">{selectedDriver.email}</div>
+                      </div>
+                    </div>
+                    {selectedDriver.course_type === "basic" ? (
+                      <div className="flex items-center">
+                        <Calendar className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
+                        <div>
+                          <>
+                            <div className="text-xs lg:text-sm text-gray-500">Data Rozpoczęcia</div>
+                            <div className="text-sm lg:text-base">
+                              {getDateStringFromId(selectedDriver.start_date)}
+                            </div>
+                          </>
+                        </div>
+                      </div>
+                    ) : null}
+                    <div className="flex items-center">
+                      <FileText className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <div className="text-xs lg:text-sm text-gray-500">Data Zawarcia Umowy</div>
+                        <div className="text-sm lg:text-base">{selectedDriver.contract_date || "-"}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <div className="text-xs lg:text-sm text-gray-500">Ukończone Godziny</div>
+                        {/* ZMIANA: Wyświetlamy driverStats.completed */}
+                        <div className="text-sm lg:text-base text-blue-700 font-semibold">{driverStats.completed}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center">
+                      <Clock className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
+                      <div>
+                        <div className="text-xs lg:text-sm text-gray-500">Pozostałe Godziny</div>
+                        {/* ZMIANA: Wyświetlamy driverStats.remaining */}
+                        <div className="text-sm lg:text-base font-semibold">{driverStats.remaining}</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ) : null}
-              <div className="flex items-center">
-                <FileText className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
-                <div>
-                  <div className="text-xs lg:text-sm text-gray-500">Data Zawarcia Umowy</div>
-                  <div className="text-sm lg:text-base">{selectedDriver.contract_date || "-"}</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
-                <div>
-                  <div className="text-xs lg:text-sm text-gray-500">Ukończone Godziny</div>
-                  <div className="text-sm lg:text-base">{selectedDriver.completed_hours}</div>
-                </div>
-              </div>
-              <div className="flex items-center">
-                <Clock className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
-                <div>
-                  <div className="text-xs lg:text-sm text-gray-500">Pozostałe Godziny</div>
-                  <div className="text-sm lg:text-base">{selectedDriver.remaining_hours}</div>
-                </div>
-              </div>
-            </div>
+                </>
+              )
+            })()}
 
             {selectedDriver.paymentFiles.map((file, index) => (
               <div key={index} className="border rounded-md p-3 flex items-center justify-between">
@@ -631,26 +694,38 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
                       {console.log(events)}
-                      {selectedDriver.events.map((event) => (
-                        <tr key={event.id}>
-                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
-                            {formatDate(event.date)}
-                          </td>
-                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
-                            {event.start_time} - {event.end_time}
-                          </td>
-                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm hidden sm:table-cell">
-                            {typeof event.instructor === "object" && event.instructor !== null
-                              ? `${event.instructor.name || ""} ${event.instructor.surname || ""}`.trim() ||
-                                event.instructor.email ||
-                                "-"
-                              : event.instructor || "-"}
-                          </td>
-                          <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm">
-                            {calculateDuration(event.start_time, event.end_time)}h
-                          </td>
-                        </tr>
-                      ))}
+                      {selectedDriver.events.map((event) => {
+                        // Sprawdzamy, czy event jest zakończony (dla wizualnego efektu opcjonalnie)
+                        const eventDate = new Date(event.date)
+                        const [endH, endM] = event.end_time.split(":").map(Number)
+                        const eventEndTime = new Date(eventDate)
+                        eventEndTime.setHours(endH, endM, 0, 0)
+                        const isCompleted = eventEndTime < new Date()
+
+                        return (
+                          <tr key={event.id} className={isCompleted ? "bg-gray-50" : ""}>
+                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
+                              {formatDate(event.date)}
+                            </td>
+                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm whitespace-nowrap">
+                              {event.start_time} - {event.end_time}
+                            </td>
+                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm hidden sm:table-cell">
+                              {typeof event.instructor === "object" && event.instructor !== null
+                                ? `${event.instructor.name || ""} ${event.instructor.surname || ""}`.trim() ||
+                                  event.instructor.email ||
+                                  "-"
+                                : event.instructor || "-"}
+                            </td>
+                            <td className="px-3 lg:px-4 py-2 text-xs lg:text-sm">
+                              {calculateDuration(event.start_time, event.end_time)}h
+                              {isCompleted && (
+                                <span className="ml-1 text-green-600 text-[10px] font-bold">(Zalicz.)</span>
+                              )}
+                            </td>
+                          </tr>
+                        )
+                      })}
                       {selectedDriver.events && selectedDriver.events.length === 0 && (
                         <tr>
                           <td colSpan={4} className="px-4 py-8 text-center text-sm text-gray-500">
@@ -742,6 +817,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     <option value="SzkolenieOkresowe">Szkolenie okresowe</option>
                     <option value="C&C+E&KWP">C & C + E & KWP </option>
                     <option value="B+E">B+E</option>
+                    <option value="KW">KW</option>
                   </select>
                 </div>
                 <div>
@@ -801,7 +877,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Ukończone Godziny</label>
+                  <label className="block text-sm font-medium mb-1">Ukończone Godziny (Baza)</label>
                   <input
                     type="number"
                     name="completed_hours"
@@ -810,9 +886,10 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     className="w-full px-3 py-2 text-sm border rounded-md"
                     min="0"
                   />
+                  <p className="text-xs text-gray-500 mt-1">To wartość bazowa. W widoku będzie obliczana suma z kalendarza.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Pozostałe Godziny</label>
+                  <label className="block text-sm font-medium mb-1">Pozostałe Godziny (Baza)</label>
                   <input
                     type="number"
                     name="remaining_hours"
@@ -821,6 +898,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     className="w-full px-3 py-2 text-sm border rounded-md"
                     min="0"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Suma tego pola i ukończonych tworzy całkowity pakiet.</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Cena Kursu (PLN)</label>
@@ -1054,6 +1132,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                         <option value="C+E">C + E</option>
                         <option value="C&C+E">C & C + E</option>
                         <option value="KWP">KWP</option>
+                        <option value="KW">KW</option>
                         <option value="KU">KU</option>
                         <option value="KUP">KUP</option>
                         <option value="D">D</option>
@@ -1188,7 +1267,9 @@ export default function DriverProfiles({ drivers, events, dates }) {
                             type="number"
                             placeholder="Godziny"
                             value={installment.hours}
-                            onChange={(e) => handleInstallmentChange(index, "hours", Number.parseFloat(e.target.value))}
+                            onChange={(e) =>
+                              handleInstallmentChange(index, "hours", Number.parseFloat(e.target.value))
+                            }
                             className="flex-1 px-2 sm:px-3 py-2 text-sm border rounded-md"
                           />
                           <input
