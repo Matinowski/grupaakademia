@@ -28,8 +28,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
   const [signedUrls, setSignedUrls] = useState({})
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
-  const { user } = useAuth()
-  console.log(dates)
+  // console.log(dates) - zakomentowane dla czystości konsoli
 
   const detailsContainerRef = useRef(null)
 
@@ -68,40 +67,43 @@ export default function DriverProfiles({ drivers, events, dates }) {
     }
   }, [showAddDriverForm, selectedDriver])
 
-  // --- NOWA FUNKCJA DO OBLICZANIA POSTĘPU NA PODSTAWIE EVENTÓW ---
+  // --- FUNKCJA DO OBLICZANIA POSTĘPU NA PODSTAWIE EVENTÓW ---
   const calculateProgress = (driver) => {
-    if (!driver || !driver.events) return { completed: 0, remaining: driver.remaining_hours || 0 }
+    if (!driver || !driver.events) return { completed: 0, remaining: driver.remaining_hours || 0, percentage: 0 }
 
     const now = new Date()
     let calculatedCompleted = 0
 
     driver.events.forEach((event) => {
-      // Pobieramy datę i godziny
       const eventDate = new Date(event.date)
       const [startHour, startMinute] = event.start_time.split(":").map(Number)
       const [endHour, endMinute] = event.end_time.split(":").map(Number)
 
-      // Ustawiamy datę zakończenia jazdy
       const eventEndTime = new Date(eventDate)
       eventEndTime.setHours(endHour, endMinute, 0, 0)
 
-      // Jeśli data zakończenia jest w przeszłości, dodajemy godziny
       if (eventEndTime < now) {
         const durationMinutes = endHour * 60 + endMinute - (startHour * 60 + startMinute)
         calculatedCompleted += durationMinutes / 60
       }
     })
 
-    // Obliczamy pozostałe: (Suma z bazy ukończone + Suma z bazy pozostałe) - Rzeczywiście ukończone
-    // Zakładamy, że suma pól w bazie to całkowity rozmiar pakietu
     const totalPackage = (driver.completed_hours || 0) + (driver.remaining_hours || 0)
     let calculatedRemaining = totalPackage - calculatedCompleted
 
     if (calculatedRemaining < 0) calculatedRemaining = 0
 
+    // Obliczanie procentu postępu
+    const totalReal = calculatedCompleted + calculatedRemaining
+    let percentage = 0
+    if (totalReal > 0) {
+      percentage = (calculatedCompleted / totalReal) * 100
+    }
+
     return {
       completed: parseFloat(calculatedCompleted.toFixed(1)),
       remaining: parseFloat(driver.remaining_hours),
+      percentage: Math.round(percentage), // Zaokrąglamy do całkowitych
     }
   }
   // ---------------------------------------------------------------
@@ -157,7 +159,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
 
   const handleDriverSelect = async (driver) => {
     setSelectedDriver(driver)
-    console.log("Selected driver:", driver)
     setEditMode(false)
     setConfirmDelete(false)
   }
@@ -209,7 +210,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
     if (editedDriver.course_type !== "basic") {
       editedDriver.start_date = null
     }
-    console.log("Edited Driver before update:", editedDriver)
 
     const updatedDriver = {
       ...editedDriver,
@@ -372,11 +372,9 @@ export default function DriverProfiles({ drivers, events, dates }) {
     setEditMode(false)
   }
 
-  // --- ZMIANA: używamy calculateProgress w walidacji płatności ---
   const hasMissedPayment = (driver) => {
     if (!driver.paymentInstallments || driver.paymentInstallments.length === 0) return false
 
-    // Obliczamy faktyczny postęp
     const progress = calculateProgress(driver)
     const currentCompleted = progress.completed
 
@@ -391,7 +389,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
     }
     return false
   }
-  // -------------------------------------------------------------
 
   const handlePreviewFile = (file) => {
     setPdfPreview(file)
@@ -404,6 +401,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
   const isPdfFile = (file) => {
     return file.name.toLowerCase().endsWith(".pdf") || file.type === "application/pdf"
   }
+
   return (
     <div className="h-full flex flex-col lg:flex-row overflow-y-scroll">
       {/* Lista kierowców */}
@@ -434,7 +432,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
 
         <div className="divide-y">
           {filteredDrivers.map((driver) => {
-            // ZMIANA: Obliczamy statystyki dla każdego kierowcy na liście
             const listStats = calculateProgress(driver)
 
             return (
@@ -446,13 +443,21 @@ export default function DriverProfiles({ drivers, events, dates }) {
                 <div className="font-medium text-sm lg:text-base">{driver.name}</div>
                 <div className="text-xs lg:text-sm text-gray-500">{driver.phone}</div>
                 <div className="text-xs lg:text-sm text-gray-500 truncate">{driver.email}</div>
-                <div className="mt-1 flex items-center gap-2 flex-wrap">
+                
+                {/* NOWY PASEK POSTĘPU NA LIŚCIE */}
+                <div className="mt-2 w-full bg-gray-200 rounded-full h-1.5">
+                  <div 
+                    className={`h-1.5 rounded-full ${listStats.remaining === 0 ? "bg-green-500" : "bg-blue-600"}`}
+                    style={{ width: `${listStats.percentage}%` }}
+                  ></div>
+                </div>
+
+                <div className="mt-2 flex items-center gap-2 flex-wrap">
                   <span
                     className={`text-xs px-2 py-1 rounded-full ${
                       listStats.remaining === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                     }`}
                   >
-                    {/* ZMIANA: Wyświetlamy obliczone remaining */}
                     {listStats.remaining === 0 ? "Ukończono" : `${listStats.remaining}h`}
                   </span>
                   {hasMissedPayment(driver) && (
@@ -481,7 +486,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
       >
         {selectedDriver && !editMode && !showAddDriverForm ? (
           <div className="p-4 lg:p-6">
-            {/* ZMIANA: Obliczamy statystyki dla wybranego kierowcy */}
             {(() => {
               const driverStats = calculateProgress(selectedDriver)
               return (
@@ -527,7 +531,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
                           driverStats.remaining === 0 ? "bg-green-100 text-green-800" : "bg-blue-100 text-blue-800"
                         }`}
                       >
-                        {/* ZMIANA: Używamy driverStats.remaining */}
                         {driverStats.remaining === 0 ? "Ukończone" : "W Trakcie"}
                       </div>
                       {hasMissedPayment(selectedDriver) && (
@@ -563,7 +566,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 lg:gap-6 mb-4">
                     <div className="flex items-center">
                       <Phone className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
                       <div className="min-w-0">
@@ -602,7 +605,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
                       <Clock className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
                       <div>
                         <div className="text-xs lg:text-sm text-gray-500">Ukończone Godziny</div>
-                        {/* ZMIANA: Wyświetlamy driverStats.completed */}
                         <div className="text-sm lg:text-base text-blue-700 font-semibold">{driverStats.completed}</div>
                       </div>
                     </div>
@@ -610,9 +612,22 @@ export default function DriverProfiles({ drivers, events, dates }) {
                       <Clock className="w-4 h-4 lg:w-5 lg:h-5 mr-2 text-gray-400 flex-shrink-0" />
                       <div>
                         <div className="text-xs lg:text-sm text-gray-500">Pozostałe Godziny</div>
-                        {/* ZMIANA: Wyświetlamy driverStats.remaining */}
                         <div className="text-sm lg:text-base font-semibold">{driverStats.remaining}</div>
                       </div>
+                    </div>
+                  </div>
+
+                  {/* DUŻY PASEK POSTĘPU W SZCZEGÓŁACH */}
+                  <div className="mb-8">
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="text-sm font-medium text-gray-700">Postęp Kursu</span>
+                        <span className="text-sm font-medium text-gray-700">{driverStats.percentage}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-4">
+                        <div 
+                            className={`h-4 rounded-full transition-all duration-1000 ease-out ${driverStats.remaining === 0 ? "bg-green-500" : "bg-blue-600"}`}
+                            style={{ width: `${driverStats.percentage}%` }}
+                        ></div>
                     </div>
                   </div>
                 </>
@@ -635,10 +650,8 @@ export default function DriverProfiles({ drivers, events, dates }) {
                         let url = null
                         if (!url) {
                           url = await fetchSignedUrl(file.path)
-                          console.log("Fetched URL:", url)
                           setSignedUrls((prev) => ({ ...prev, [file.path]: url }))
                         }
-                        console.log("Preview URL:", file)
                         setPdfPreview({ ...file, path: url })
                       }}
                       className="p-1 text-blue-600 hover:text-blue-800"
@@ -654,7 +667,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
                         url = await fetchSignedUrl(file.path)
                         setSignedUrls((prev) => ({ ...prev, [file.path]: url }))
                       }
-                      // Pobierz plik przez browser
                       const link = document.createElement("a")
                       link.href = url
                       link.download = file.name
@@ -671,7 +683,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
               </div>
             ))}
 
-            <div className="mb-6">
+            <div className="mb-6 mt-6">
               <h3 className="text-base lg:text-lg font-semibold mb-3">Historia Jazd</h3>
               <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0">
                 <div className="inline-block min-w-full align-middle">
@@ -693,9 +705,7 @@ export default function DriverProfiles({ drivers, events, dates }) {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {console.log(events)}
                       {selectedDriver.events.map((event) => {
-                        // Sprawdzamy, czy event jest zakończony (dla wizualnego efektu opcjonalnie)
                         const eventDate = new Date(event.date)
                         const [endH, endM] = event.end_time.split(":").map(Number)
                         const eventEndTime = new Date(eventDate)
@@ -817,7 +827,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
                     <option value="SzkolenieOkresowe">Szkolenie okresowe</option>
                     <option value="C&C+E&KWP">C & C + E & KWP </option>
                     <option value="B+E">B+E</option>
-                    <option value="KW">KW</option>
                   </select>
                 </div>
                 <div>
@@ -1132,7 +1141,6 @@ export default function DriverProfiles({ drivers, events, dates }) {
                         <option value="C+E">C + E</option>
                         <option value="C&C+E">C & C + E</option>
                         <option value="KWP">KWP</option>
-                        <option value="KW">KW</option>
                         <option value="KU">KU</option>
                         <option value="KUP">KUP</option>
                         <option value="D">D</option>
