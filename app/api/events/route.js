@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabase"
 import { cookies } from "next/headers"
-
 import { z } from "zod"
 
 // Event schema validation
@@ -17,18 +16,20 @@ const eventSchema = z.object({
 })
 
 function isTooLate(eventDateString, now = new Date()) {
-  // dzisiejszy dzień o godzinie 10:00 rano
   const todayAtTen = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 10, 0, 0)
-
   const eventDate = new Date(eventDateString)
-
-  // Zwraca true, jeśli eventDate jest wcześniejszy niż dziś o 10:00 (czyli w przeszłości)
   return eventDate < todayAtTen
 }
 
+// Funkcja pomocnicza do obliczania czasu trwania w godzinach
+function getDurationInHours(startTime, endTime) {
+  const [startH, startM] = startTime.split(":").map(Number)
+  const [endH, endM] = endTime.split(":").map(Number)
+  const startTotal = startH + startM / 60
+  const endTotal = endH + endM / 60
+  return Math.max(0, endTotal - startTotal)
+}
 
-
-// Add a query parameter handler for date range filtering
 export async function GET(request) {
   const cookieStore = await cookies()
   const sessionToken = cookieStore.get("session-token")
@@ -82,7 +83,6 @@ export async function GET(request) {
       )
     `)
 
-    // Instruktor widzi tylko swoje eventy
     if (user.role === "instruktor") {
       query = query.eq("instructor_id", session.user_id)
     }
@@ -93,6 +93,8 @@ export async function GET(request) {
     const month = url.searchParams.get("month")
     const year = url.searchParams.get("year")
 
+    let effectiveStartDate = startDate;
+
     if (startDate && endDate) {
       query = query.gte("date", startDate).lte("date", endDate)
     } else if (month && year) {
@@ -100,6 +102,7 @@ export async function GET(request) {
       const yearNum = Number.parseInt(year)
       const startOfMonth = new Date(yearNum, monthNum - 1, 1).toISOString()
       const endOfMonth = new Date(yearNum, monthNum, 0).toISOString()
+      effectiveStartDate = startOfMonth;
       query = query.gte("date", startOfMonth).lte("date", endOfMonth)
     }
 
@@ -111,80 +114,138 @@ export async function GET(request) {
     }
 
     // ===== DRIVER IDS =====
-    const driverIds = [
-      ...new Set(events.map(e => e.driver?.id).filter(Boolean))
-    ]
+    const driverIds = [...new Set(events.map((e) => e.driver?.id).filter(Boolean))]
 
-    // ===== PAYMENT INSTALLMENTS =====
-    const { data: installments, error: installmentError } = await supabaseAdmin
+    if (driverIds.length === 0) {
+        return NextResponse.json({ events })
+    }
+
+    // ===== POBIERANIE RAT I WPŁAT =====
+    const { data: installments } = await supabaseAdmin
       .from("payment_installments")
       .select("driver_id, hours, amount")
       .in("driver_id", driverIds)
+      .order("hours", { ascending: true }) // Ważne: sortowanie po godzinach
 
-    if (installmentError) {
-      console.error("Error fetching payment_installments:", installmentError)
-      return NextResponse.json({ error: "Failed to fetch installments" }, { status: 500 })
-    }
+    const { data: payments } = await supabaseAdmin
+      .from("payments")
+      .select("driver_id, amount")
+      .in("driver_id", driverIds)
 
-    const installmentsMap = installments.reduce((acc, inst) => {
+    // Mapy pomocnicze
+    const installmentsMap = (installments || []).reduce((acc, inst) => {
       if (!acc[inst.driver_id]) acc[inst.driver_id] = []
       acc[inst.driver_id].push(inst)
       return acc
     }, {})
 
-    // ===== PAYMENTS =====
-    const { data: payments, error: paymentsError } = await supabaseAdmin
-      .from("payments")
-      .select("driver_id, amount")
-      .in("driver_id", driverIds)
-
-    if (paymentsError) {
-      console.error("Error fetching payments:", paymentsError)
-      return NextResponse.json({ error: "Failed to fetch payments" }, { status: 500 })
-    }
-
-    const paymentsMap = payments.reduce((acc, payment) => {
+    const paymentsMap = (payments || []).reduce((acc, payment) => {
       if (!acc[payment.driver_id]) acc[payment.driver_id] = 0
       acc[payment.driver_id] += payment.amount
       return acc
     }, {})
 
-    // ===== ENRICH EVENTS =====
-    const enrichedEvents = events.map(event => {
-      const driver = event.driver
+    // ===== OBLICZANIE "BAZOWYCH" GODZIN Z PRZESZŁOŚCI =====
+    // Musimy wiedzieć ile godzin kierowca wyjeździł PRZED widokiem kalendarza, 
+    // aby poprawnie liczyć sumę chronologiczną.
+    let pastEventsMap = {}
+    
+    if (effectiveStartDate) {
+        const { data: pastEvents } = await supabaseAdmin
+            .from("events")
+            .select("driver_id, start_time, end_time")
+            .in("driver_id", driverIds)
+            .lt("date", effectiveStartDate) // Tylko wydarzenia sprzed zakresu
 
-      if (!driver || !driver.id) {
-        return { ...event, payment_due: false }
-      }
+        pastEventsMap = (pastEvents || []).reduce((acc, ev) => {
+            if (!acc[ev.driver_id]) acc[ev.driver_id] = 0
+            acc[ev.driver_id] += getDurationInHours(ev.start_time, ev.end_time)
+            return acc
+        }, {})
+    }
 
-      const { completed_hours = 0 } = driver
-      const driverInstallments = installmentsMap[driver.id] || []
-      const totalPaid = paymentsMap[driver.id] || 0
+    // ===== PRZETWARZANIE EVENTÓW =====
+    // 1. Grupujemy eventy po kierowcy, żeby posortować je chronologicznie
+    const eventsByDriver = events.reduce((acc, event) => {
+        const dId = event.driver?.id || 'unknown'
+        if(!acc[dId]) acc[dId] = []
+        acc[dId].push(event)
+        return acc
+    }, {})
 
-      const requiredPayment = driverInstallments
-        .filter(inst => completed_hours >= inst.hours)
-        .reduce((sum, inst) => sum + inst.amount, 0)
+    let enrichedEvents = []
 
-      const paymentDue = totalPaid < requiredPayment
+    // 2. Iterujemy po każdym kierowcy
+    for (const dId of Object.keys(eventsByDriver)) {
+        let driverEvents = eventsByDriver[dId]
 
-      return {
-        ...event,
-        payment_due: paymentDue,
-        required_payment: requiredPayment,
-        paid: totalPaid
-      }
-    })
+        // Jeśli brak kierowcy (np. event bez przypisanego kursanta), zwracamy bez zmian
+        if (dId === 'unknown') {
+            enrichedEvents.push(...driverEvents.map(e => ({...e, payment_due: false})))
+            continue
+        }
+
+        // Sortujemy eventy chronologicznie: data rosnąco, potem godzina rosnąco
+        driverEvents.sort((a, b) => {
+            const dateA = new Date(a.date).getTime()
+            const dateB = new Date(b.date).getTime()
+            if (dateA !== dateB) return dateA - dateB
+            return a.start_time.localeCompare(b.start_time)
+        })
+
+        // Pobieramy dane finansowe kierowcy
+        const totalPaid = paymentsMap[dId] || 0
+        const driverInstallments = installmentsMap[dId] || []
+        
+        // Obliczamy LIMIT BEZPIECZNYCH GODZIN (opłaconych)
+        let safeHoursLimit = 99999 // Domyślnie dużo, jeśli wszystko opłacone
+        let cumulativeRequired = 0
+        
+        // Sprawdzamy raty po kolei
+        for (const inst of driverInstallments) {
+            cumulativeRequired += inst.amount
+            if (totalPaid < cumulativeRequired) {
+                // Jeśli wpłaty są mniejsze niż wymagana suma na tym etapie,
+                // to limit to godzina tej raty.
+                safeHoursLimit = inst.hours
+                break 
+            }
+        }
+
+        // Startujemy licznik godzin od tego, co było wcześniej (przed tym widokiem)
+        let runningHours = pastEventsMap[dId] || 0
+
+        // Przetwarzamy posortowane eventy i oznaczamy te, które przekraczają limit
+        for (const event of driverEvents) {
+            const duration = getDurationInHours(event.start_time, event.end_time)
+            
+            // Dodajemy czas tego eventu do licznika
+            // Uwaga: Można dyskutować czy sprawdzamy `runningHours` (przed jazdą) czy `runningHours + duration` (po jeździe).
+            // Zazwyczaj, jeśli zaczynasz jazdę mając dług, powinna być czerwona.
+            // Lub jeśli w trakcie tej jazdy przekraczasz limit.
+            // Przyjmijmy: jeśli PO zakończeniu tej jazdy przekroczysz limit (lub już przekroczyłeś), to jest unpaid.
+            
+            runningHours += duration
+
+            // Logika: Jeśli aktualny licznik godzin jest większy niż limit opłaconych godzin
+            const isPaymentDue = runningHours > safeHoursLimit
+
+            enrichedEvents.push({
+                ...event,
+                payment_due: isPaymentDue,
+                // Debug info (opcjonalnie)
+                _debug_running: runningHours,
+                _debug_limit: safeHoursLimit
+            })
+        }
+    }
 
     return NextResponse.json({ events: enrichedEvents })
-
   } catch (error) {
     console.error("Error in GET events:", error)
     return NextResponse.json({ error: "Failed to fetch events" }, { status: 500 })
   }
 }
-
-
-
 
 export async function POST(request) {
   try {
@@ -193,40 +254,20 @@ export async function POST(request) {
 
     console.log("Event data:", eventData)
 
-
-
-    // Check for scheduling conflicts
-    // if (eventData.instructor_id) {
-    //   const { data: conflictingEvents } = await supabaseAdmin
-    //     .from("events")
-    //     .select("id, title, start_time, end_time")
-    //     .eq("instructor_id", eventData.instructor_id)
-    //     .eq("date", eventData.date)
-    //     .or(`start_time.lte.${eventData.end_time},end_time.gte.${eventData.start_time}`)
-
-    //   if (conflictingEvents && conflictingEvents.length > 0) {
-    //     return NextResponse.json(
-    //       {
-    //         error: "Scheduling conflict",
-    //         conflicts: conflictingEvents,
-    //       },
-    //       { status: 409 },
-    //     )
-    //   }
-    // }
-
-
-
     // Create event
     const now = new Date()
     const is_too_late = isTooLate(eventData.date, now)
-    
-    const { data, error } = await supabaseAdmin.from("events").insert({
-      ...eventData,
-      is_too_late,
-      created_at: now.toISOString(),
-      updated_at: now.toISOString(),
-    }).select().single()
+
+    const { data, error } = await supabaseAdmin
+      .from("events")
+      .insert({
+        ...eventData,
+        is_too_late,
+        created_at: now.toISOString(),
+        updated_at: now.toISOString(),
+      })
+      .select()
+      .single()
 
     if (error) {
       console.error("Error creating event:", error)
@@ -234,36 +275,34 @@ export async function POST(request) {
     }
 
     const { data: driverData, error: errorDriver } = await supabaseAdmin
-    .from("drivers")
-    .select("completed_hours")
-    .eq("id", eventData.driver_id)
-    .single();
-  
-  if (errorDriver) {
-    console.log("Get driver error:", errorDriver);
-    return;
-  }
+      .from("drivers")
+      .select("completed_hours")
+      .eq("id", eventData.driver_id)
+      .single()
 
-  const startHour = parseInt(eventData.start_time.split(":")[0], 10);
-const endHour = parseInt(eventData.end_time.split(":")[0], 10);
-const hoursToAdd = Math.max(0, endHour - startHour);
-  
-  const currentHours = driverData?.completed_hours || 0;
-  const newHours = currentHours + hoursToAdd;
-  
-  // Zaktualizuj completed_hours
-  const { error: updateError } = await supabaseAdmin
-    .from("drivers")
-    .update({ completed_hours: newHours })
-    .eq("id", eventData.driver_id);
-  
-  if (updateError) {
-    console.log("Update driver hours error:", updateError);
-  }
+    if (errorDriver) {
+      console.log("Get driver error:", errorDriver)
+      return
+    }
+
+    const startHour = parseInt(eventData.start_time.split(":")[0], 10)
+    const endHour = parseInt(eventData.end_time.split(":")[0], 10)
+    const hoursToAdd = Math.max(0, endHour - startHour)
+
+    const currentHours = driverData?.completed_hours || 0
+    const newHours = currentHours + hoursToAdd
+
+    // Zaktualizuj completed_hours
+    const { error: updateError } = await supabaseAdmin
+      .from("drivers")
+      .update({ completed_hours: newHours })
+      .eq("id", eventData.driver_id)
+
+    if (updateError) {
+      console.log("Update driver hours error:", updateError)
+    }
 
     return NextResponse.json({ event: data }, { status: 201 })
-
-    
   } catch (error) {
     if (error instanceof z.ZodError) {
       console.error("ZodError:", error.errors)
